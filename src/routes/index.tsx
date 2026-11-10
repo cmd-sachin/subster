@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { FileUp, Landmark, LayoutGrid } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { AgentPanel } from '@/components/agent-panel';
 import { useApp } from '@/components/app-state';
-import { Categories } from '@/components/categories';
-import { Hero } from '@/components/hero';
 import { Inbox } from '@/components/inbox';
+import { CategoryBar, MetricStrip, Upcoming, UsageTrend } from '@/components/overview';
+import { Setup } from '@/components/setup';
 import { SubscriptionTable } from '@/components/subscription-table';
 
 export const Route = createFileRoute('/')({ component: CommandCenter });
@@ -13,57 +13,38 @@ function CommandCenter() {
   const { state } = useApp();
   if (!state) return <p className="p-8 text-muted">Loading your subscriptions</p>;
   const empty = state.portfolio.insights.length === 0;
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="mx-auto max-w-[1320px] space-y-5 px-4 py-7 md:px-8">
-      <header>
-        <h1 className="text-[26px] font-semibold tracking-tight">Every subscription should earn its place.</h1>
-        <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-muted">
-          SubSense compares what each subscription costs with how much you actually use it, then proposes what to do before the next charge. You approve, it acts.
-        </p>
+    <div className="mx-auto max-w-[1360px] space-y-4 px-4 py-6 md:px-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="eyebrow">{today}</p>
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]">Command center</h1>
+        </div>
+        <Link to="/services" className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-canvas hover:opacity-90">
+          <Plus size={15} strokeWidth={2.5} aria-hidden="true" />
+          Add subscription
+        </Link>
       </header>
 
-      {empty ? (
-        <section className="panel p-6" aria-label="Get started">
-          <h2 className="text-[17px] font-semibold">Start with your own data</h2>
-          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">Nothing here is sample data. Bring in your payments and SubSense finds the subscriptions in them.</p>
-          <ol className="mt-5 grid gap-3 md:grid-cols-3">
-            <Step n={1} icon={Landmark} title="Link your bank" body="Sign in to your bank through Plaid or your Account Aggregator. Read-only." to="/connect" cta="Link a bank" />
-            <Step n={2} icon={FileUp} title="Or upload a statement" body="Any bank or card. Download the CSV from net banking and drop it in." to="/connect" cta="Upload a statement" />
-            <Step n={3} icon={LayoutGrid} title="Or pick your services" body="Browse the services directory and add what you pay for, or subscribe to something new." to="/services" cta="Browse services" />
-          </ol>
-        </section>
-      ) : (
-        <>
-          <Hero portfolio={state.portfolio} />
-          <Categories portfolio={state.portfolio} />
-        </>
-      )}
+      <Setup state={state} />
+      {!empty && <MetricStrip portfolio={state.portfolio} />}
 
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_1fr]">
-        <Inbox />
-        <AgentPanel />
+      <div className="grid gap-4 xl:grid-cols-12">
+        <div className="space-y-4 xl:col-span-8">
+          <Inbox />
+          {!empty && <UsageTrend portfolio={state.portfolio} />}
+          {!empty && <SubscriptionTable />}
+        </div>
+        <div className="space-y-4 xl:col-span-4">
+          <AgentPanel />
+          {!empty && <Upcoming portfolio={state.portfolio} />}
+          {!empty && <CategoryBar portfolio={state.portfolio} />}
+        </div>
       </div>
 
-      {!empty && <SubscriptionTable />}
     </div>
   );
 }
 
-function Step({ n, icon: Icon, title, body, to, cta }: { n: number; icon: typeof Landmark; title: string; body: string; to: '/connect' | '/services'; cta: string }) {
-  return (
-    <li className="flex flex-col rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07]" aria-hidden="true">
-        <Icon size={17} strokeWidth={1.75} />
-      </span>
-      <h3 className="mt-3 text-[14px] font-semibold">
-        <span className="num mr-1.5 text-faint">{n}</span>
-        {title}
-      </h3>
-      <p className="mt-1 flex-1 text-[13px] leading-relaxed text-muted">{body}</p>
-      <Link to={to} className="mt-3 w-fit rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
-        {cta}
-      </Link>
-    </li>
-  );
-}

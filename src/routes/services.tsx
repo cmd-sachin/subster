@@ -204,7 +204,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                 .
               </p>
             ) : (
-              <p className="text-[13px] leading-relaxed text-muted">You are not tracking {app.name}. If it shows up in your bank feed or a statement it is added automatically.</p>
+              <p className="text-[13px] leading-relaxed text-muted">You are not tracking {app.name}. Add it below, or link your bank and it is picked up automatically.</p>
             )}
           </Section>
 

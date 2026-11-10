@@ -91,7 +91,7 @@ export function AgentPanel() {
   const idle = !busy && steps.length === 0 && turns.length === 0;
 
   return (
-    <section className="flex min-h-[420px] flex-col panel" aria-label="Agent">
+    <section className="flex min-h-[360px] flex-col panel" aria-label="Agent">
       <header className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
         <div>
           <h2 className="text-[14px] font-semibold">Agent</h2>

@@ -30,13 +30,13 @@ export function SubscriptionTable() {
   return (
     <section className="panel" aria-label="Subscriptions">
       <header className="flex items-baseline justify-between border-b border-white/[0.06] px-4 py-3">
-        <h2 className="text-[14px] font-semibold">What you pay for, and what you get</h2>
-        <span className="text-[12px] text-muted">Last 30 days of use · worst value first</span>
+        <h2 className="text-[14px] font-semibold">Subscriptions</h2>
+        <span className="text-[12px] text-muted">Cost against the last 30 days of use, worst value first</span>
       </header>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-[13px]">
+        <table className="w-full min-w-[680px] text-[13px]">
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wide text-faint">
+            <tr className="whitespace-nowrap text-left text-[11px] uppercase tracking-wide text-faint">
               <th className="px-4 py-2 font-medium">Subscription</th>
               <th className="px-2 py-2 text-right font-medium">Cost</th>
               <th className="px-2 py-2 text-right font-medium">Used</th>
@@ -62,8 +62,8 @@ export function SubscriptionTable() {
                             {i.sub.name}
                             {i.sub.status !== 'active' && <span className="ml-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-normal text-muted">{i.sub.status.replace('_', ' ')}</span>}
                           </span>
-                          <span className="block text-[12px] text-faint">
-                            {CATEGORY_LABEL[i.sub.category]} · {i.sub.plan} · {i.sub.rail === 'paypal' ? 'PayPal' : i.sub.rail === 'bank' ? 'Bank' : 'Card'}
+                          <span className="block whitespace-nowrap text-[12px] text-faint">
+                            {CATEGORY_LABEL[i.sub.category]} · {i.sub.rail === 'paypal' ? 'PayPal' : i.sub.rail === 'bank' ? 'Bank' : 'Card'}
                           </span>
                         </span>
                         <ChevronDown size={14} className={`text-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -88,7 +88,7 @@ export function SubscriptionTable() {
                     <td className="num px-2 py-2.5 text-right">{i.costPerHour !== null ? money(i.costPerHour) : <span className="text-faint">n/a</span>}</td>
                     <td className="px-2 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${v.tone}`}>{v.label}</span>
+                        <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium ${v.tone}`}>{v.label}</span>
                         {i.valueScore !== null && (
                           <span className="flex items-center gap-1.5" title={`Value score ${i.valueScore} of 100`}>
                             <span className="block h-1.5 w-12 overflow-hidden rounded-full bg-white/[0.06]">
@@ -99,7 +99,7 @@ export function SubscriptionTable() {
                         )}
                       </div>
                     </td>
-                    <td className="num px-4 py-2.5 text-muted">{inactive ? 'n/a' : `${shortDate(i.sub.nextRenewal)} · ${i.daysToRenewal}d`}</td>
+                    <td className="num whitespace-nowrap px-4 py-2.5 text-muted">{inactive ? 'n/a' : `${shortDate(i.sub.nextRenewal)} · ${i.daysToRenewal}d`}</td>
                   </tr>
                   {isOpen && (
                     <tr className="bg-white/[0.025]">

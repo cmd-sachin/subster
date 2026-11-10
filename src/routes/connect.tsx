@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Activity, Banknote, FileUp, Landmark, RefreshCw, Settings2, Smartphone, Trash2 } from 'lucide-react';
+import { Activity, Banknote, Landmark, RefreshCw, Settings2, Smartphone, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, type MutateResult } from '@/components/app-state';
 import { CATEGORY_LABEL } from '@/domain/catalog';
@@ -109,8 +109,8 @@ function Connections() {
       <header>
         <h1 className="text-[26px] font-semibold tracking-tight">Connections</h1>
         <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-muted">
-          SubSense holds only your own data. Streaming, telecom and software companies do not expose billing APIs, so it follows the money: your bank account, your statements and your
-          PayPal agreements.
+          SubSense holds only your own data. Streaming, telecom and software companies do not expose billing APIs, so it follows the money: the subscriptions you add, your bank account and
+          your PayPal agreements.
         </p>
       </header>
 
@@ -188,6 +188,17 @@ function Connections() {
           </div>
         )}
 
+        {!bank.link && (
+          <p className="mt-4 text-[12px] text-faint">
+            Bank not supported yet?{' '}
+            <label className="cursor-pointer text-muted underline underline-offset-2 hover:text-ink">
+              {busy === 'csv' ? 'Reading the file' : 'Import a statement file instead'}
+              <input type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" className="sr-only" onChange={(e) => uploadStatement(e.target.files?.[0])} />
+            </label>
+            . HDFC NetBanking: download the statement in the "Delimited" format.
+          </p>
+        )}
+
         {bank.candidates.length > 0 && (
           <div className="mt-5">
             <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-faint">Regular payments that might be subscriptions</h3>
@@ -231,18 +242,6 @@ function Connections() {
             </ul>
           </div>
         )}
-      </Card>
-
-      <Card icon={FileUp} title="Bank or card statement" badge="Works with any bank">
-        <p className="text-[13px] leading-relaxed text-muted">
-          Download your statement from net banking as CSV (or delimited text) and upload it. HDFC, ICICI, SBI, Axis, Kotak and US or European layouts are recognised, including separate
-          withdrawal and deposit columns. Only payments leaving the account are read, and uploading the same file twice changes nothing. Six months or more gives the best detection. In
-          HDFC NetBanking, open the account statement, pick the period and download it in the "Delimited" format (not PDF or Excel).
-        </p>
-        <label className="mt-3 inline-block cursor-pointer rounded-xl bg-accent px-3.5 py-2 text-[13px] font-semibold text-canvas hover:opacity-90">
-          {busy === 'csv' ? 'Reading' : 'Upload a statement'}
-          <input type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" className="sr-only" onChange={(e) => uploadStatement(e.target.files?.[0])} />
-        </label>
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">

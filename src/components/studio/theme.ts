@@ -3,7 +3,7 @@
 
 import { studioTheme } from 'ag-studio';
 
-const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Outfit Variable", system-ui, sans-serif';
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
 const LINE = 'rgba(255, 255, 255, 0.09)';
 const line = { width: 1, color: LINE };
 

@@ -15,6 +15,7 @@
   --muted: #9aa1ad;
   --faint: #636a77;
   --line: #1b1f28;
+  --hairline: rgba(255, 255, 255, 0.08);
   --accent: var(--lime);
   --accent-soft: rgba(212, 255, 36, 0.12);
   --good: var(--lime);
@@ -44,7 +45,7 @@
   --color-bad-soft: var(--bad-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-sans: "Outfit Variable", system-ui, sans-serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -55,21 +56,31 @@ body {
 
 body {
   background:
-    radial-gradient(900px 520px at 10% -10%, rgba(21, 88, 201, 0.34), transparent 62%),
-    radial-gradient(700px 480px at 100% 0%, rgba(212, 255, 36, 0.06), transparent 60%),
+    radial-gradient(1100px 420px at 20% -18%, rgba(21, 88, 201, 0.22), transparent 70%),
     var(--canvas);
   background-attachment: fixed;
   color: var(--ink);
-  font-family: "Outfit Variable", system-ui, sans-serif;
+  font-family: "Inter Variable", system-ui, sans-serif;
   font-size: 14px;
+  /* Inter: single-storey a off, open digits, tabular-friendly forms. */
+  font-feature-settings: "cv11", "ss03", "calt";
+  letter-spacing: -0.006em;
 }
 
-/* Glass card: the one surface treatment used everywhere. */
+/* The one surface: flat, hairline border, modest radius. No blur, no glow. */
 .panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022));
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 20px;
-  backdrop-filter: blur(18px);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+}
+
+/* Small uppercase label used above figures and sections. */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
 .num {
@@ -134,7 +145,7 @@ button:disabled {
   --b-panel-background: transparent;
   --b-widget-border-color: rgba(255, 255, 255, 0.07);
   --b-grid-header-color: var(--muted);
-  font-family: "Outfit Variable", system-ui, sans-serif;
+  font-family: "Inter Variable", system-ui, sans-serif;
 }
 
 /* Analytics keeps the app palette but with a library feel: flat black, heavy titles, system type. */
@@ -143,7 +154,7 @@ button:disabled {
   --lib-raised: #161a22;
   --lib-line: rgba(255, 255, 255, 0.08);
   background: var(--black);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Outfit Variable", system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif;
 }
 .library h1 {
   font-size: 34px;

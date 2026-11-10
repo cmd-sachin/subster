@@ -28,7 +28,7 @@ keys is shown as not connected, and the features that need it say so.
 
 | To get | You need |
 | --- | --- |
-| Subscriptions found from your payments | Nothing: upload your bank statement as CSV on the Connections page |
+| Your subscriptions tracked | Nothing: add them from the Services page |
 | A live link to your bank | Plaid keys (US, Canada, UK, Europe) or Setu keys (India, see limits) |
 | Pause, cancel, resume and subscribe through PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` |
 | The agent reasoning with Gemini, live plan checks, and the AG Studio assistant | `GEMINI_API_KEY` |

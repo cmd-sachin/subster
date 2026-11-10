@@ -74,7 +74,7 @@ export default function Dashboard() {
       <div className="library flex h-full flex-col px-4 py-8 md:px-8">
         <h1>Analytics</h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
-          There is nothing to analyse yet. Link your bank or upload a statement and your subscriptions, charges and usage appear here.
+          There is nothing to analyse yet. Add your subscriptions or link your bank and your spend, charges and usage appear here.
         </p>
         <Link to="/connect" className="mt-5 w-fit rounded-full bg-accent px-4 py-2 text-[14px] font-semibold text-canvas hover:opacity-90">
           Bring in your data

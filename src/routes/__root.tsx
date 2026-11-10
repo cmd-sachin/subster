@@ -1,4 +1,4 @@
-import '@fontsource-variable/outfit';
+import '@fontsource-variable/inter';
 import type { QueryClient } from '@tanstack/react-query';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';

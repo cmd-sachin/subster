@@ -5,6 +5,7 @@ import { ChevronDown, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { diffDays, money, shortDate, today } from '@/domain/dates';
 import type { AgentAction } from '@/domain/types';
+import { AppLogo } from './app-logo';
 import { useApp } from './app-state';
 
 const VERB: Record<AgentAction['type'], string> = { cancel: 'Cancel', pause: 'Pause', resume: 'Resume', downgrade: 'Downgrade', retry_payment: 'Fix payment', subscribe: 'Subscribe' };
@@ -58,8 +59,8 @@ export function Inbox() {
           return (
             <li key={a.id} className="rise border-b border-white/[0.06] px-4 py-3.5 last:border-b-0">
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: sub?.color }} aria-hidden="true" />
+                <div className="flex items-center gap-2.5">
+                  <AppLogo providerId={sub?.providerId ?? a.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#1558c9'} size={28} />
                   <h3 className="text-[14px] font-semibold">{a.title}</h3>
                 </div>
                 {a.savingsMonthly > 0 && <span className="num text-[13px] font-semibold text-good">saves {money(a.savingsMonthly)}/mo</span>}
