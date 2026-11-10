@@ -1,0 +1,53 @@
+{
+  "name": "subsense",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/copy-vendor.mjs",
+    "dev": "vite dev",
+    "prebuild": "node scripts/copy-vendor.mjs",
+    "build": "vite build",
+    "start": "node .output/server/index.mjs",
+    "lint": "eslint src scripts vite.config.ts eslint.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "smoke": "python3 scripts/smoke_test.py",
+    "test": "node --experimental-strip-types scripts/statement_test.ts",
+    "logos": "node --experimental-strip-types scripts/gen-logos.mjs",
+    "gateway": "node scripts/webhook-gateway.mjs",
+    "tunnel": "npx --yes cloudflared tunnel --url http://localhost:3001"
+  },
+  "dependencies": {
+    "@bryntum/scheduler": "npm:@bryntum/scheduler-trial@^7.3.8",
+    "@bryntum/scheduler-react": "^7.3.8",
+    "@fontsource-variable/outfit": "^5.3.0",
+    "@google/genai": "^3.0.0",
+    "@paypal/paypal-server-sdk": "^2.5.0",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/react-start": "^1.169.5",
+    "ag-studio": "^3.1.0",
+    "ag-studio-react": "^3.1.0",
+    "lucide-react": "^1.71.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^9",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "nitro": "^3.0.261103-rc",
+    "simple-icons": "^16.37.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.7"
+  },
+  "type": "module"
+}
