@@ -73,6 +73,55 @@ async function sync() {
   await render();
 }
 
+// Sets the extension up from the Subster tab in front: reads the signed-in account's device key
+// from that page and links to it. Nothing needs to be typed.
+$('connect').addEventListener('click', async () => {
+  const note = $('connect-note');
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let origin;
+  try {
+    origin = new URL(tab?.url ?? '').origin;
+  } catch {
+    origin = '';
+  }
+  if (!tab?.id || !/^https?:/.test(origin)) {
+    note.textContent = 'Open your Subster site in this tab first.';
+    return;
+  }
+  const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  if (!local) {
+    if (!origin.startsWith('https:')) {
+      note.textContent = 'A Subster site that is not on this machine must use https.';
+      return;
+    }
+    // Asked for here, on the click, for this one address only.
+    if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }))) return;
+  }
+  let found;
+  try {
+    [{ result: found }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async () => {
+        try {
+          const me = await (await fetch('/api/auth/me')).json();
+          return me && 'setup' in me ? { signedIn: Boolean(me.user), deviceKey: me.deviceKey ?? null } : null;
+        } catch {
+          return null;
+        }
+      },
+    });
+  } catch {
+    found = null;
+  }
+  if (!found) note.textContent = 'This tab is not a Subster site.';
+  else if (!found.signedIn || !found.deviceKey) note.textContent = 'Sign in to Subster in this tab, then press this again.';
+  else {
+    const result = await chrome.runtime.sendMessage({ type: 'link', serverUrl: origin, deviceKey: found.deviceKey });
+    note.textContent = result?.ok ? 'Connected. Usage from this browser now reaches your account.' : 'That did not work. Try again in a moment.';
+  }
+  await render();
+});
+
 // The device key ties this browser's reports to one Subster account. It is kept in this browser
 // and sent only to the Subster server.
 $('key-form').addEventListener('submit', async (event) => {
@@ -103,6 +152,7 @@ $('server').addEventListener('submit', async (event) => {
     if (!granted) return;
   }
   await chrome.storage.local.set({ serverUrl: url.origin });
+  await chrome.runtime.sendMessage({ type: 'watch', serverUrl: url.origin });
   await sync();
 });
 

@@ -27,17 +27,53 @@ export interface Account {
   createdAt: string;
   lastSeenAt?: string;
   onboardedAt?: string;
+  /** Authenticator app: the shared secret, once the person has confirmed a code from it. */
+  totp?: { secret: string; enabledAt: string };
+  /** A secret shown for enrolment but not yet confirmed. */
+  pendingTotp?: string;
+  passkeys?: Passkey[];
+  /** A visitor trying the demo without an account. Signed out and deleted when the demo ends. */
+  guest?: boolean;
+  guestUntil?: number;
+}
+
+export interface Passkey {
+  id: string;
+  /** The credential's public key, base64url. */
+  publicKey: string;
+  counter: number;
+  transports?: string[];
+  name: string;
+  createdAt: string;
 }
 
 interface AuthDb {
   users: Account[];
   sessions: { hash: string; userId: string; expiresAt: number }[];
   signups: 'open' | 'closed';
+  /** Whether the sign-in screen offers the demo without an account. On unless switched off. */
+  guestDemo?: boolean;
 }
 
 /** What the browser is allowed to know about an account. */
-export type PublicAccount = Pick<Account, 'id' | 'email' | 'name' | 'role' | 'status' | 'permissions' | 'createdAt' | 'lastSeenAt' | 'onboardedAt'>;
-export const publicAccount = ({ id, email, name, role, status, permissions, createdAt, lastSeenAt, onboardedAt }: Account): PublicAccount => ({ id, email, name, role, status, permissions, createdAt, lastSeenAt, onboardedAt });
+export type PublicAccount = Pick<Account, 'id' | 'email' | 'name' | 'role' | 'status' | 'permissions' | 'createdAt' | 'lastSeenAt' | 'onboardedAt'> & {
+  /** How this account can prove who it is, beyond its password. Never the secrets themselves. */
+  security: { totp: boolean; passkeys: Pick<Passkey, 'id' | 'name' | 'createdAt'>[] };
+  guest: boolean;
+};
+export const publicAccount = ({ id, email, name, role, status, permissions, createdAt, lastSeenAt, onboardedAt, totp, passkeys, guest }: Account): PublicAccount => ({
+  guest: guest === true,
+  id,
+  email,
+  name,
+  role,
+  status,
+  permissions,
+  createdAt,
+  lastSeenAt,
+  onboardedAt,
+  security: { totp: Boolean(totp), passkeys: (passkeys ?? []).map((k) => ({ id: k.id, name: k.name, createdAt: k.createdAt })) },
+});
 
 const FILE = path.join(DATA_DIR, 'accounts.json');
 const SESSION_DAYS = 30;
@@ -182,8 +218,12 @@ export function endSession(request: Request): string {
   const value = sessionToken(request);
   if (value) {
     const data = store();
+    const session = data.sessions.find((s) => s.hash === sha(value));
+    const account = session && data.users.find((u) => u.id === session.userId);
     data.sessions = data.sessions.filter((s) => s.hash !== sha(value));
     persist();
+    // A guest exists only for the length of their demo.
+    if (account?.guest) removeGuest(account.id);
   }
   return cookie('', 0, request);
 }
@@ -195,6 +235,10 @@ export function accountFor(request: Request, allowDeviceKey = false): Account | 
   if (value) {
     const session = data.sessions.find((s) => s.hash === sha(value) && s.expiresAt > Date.now());
     const account = session && data.users.find((u) => u.id === session.userId);
+    if (account?.guest && (account.guestUntil ?? 0) < Date.now()) {
+      removeGuest(account.id);
+      return undefined;
+    }
     if (account) return seen(account);
   }
   const bearer = allowDeviceKey ? request.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] : undefined;
@@ -215,9 +259,12 @@ function seen(account: Account) {
 }
 
 export const allAccounts = () => store().users;
+export const accountByEmail = (email: string) => store().users.find((u) => u.email === cleanEmail(email));
+/** Writes the accounts file after a change made elsewhere, such as enrolling a passkey. */
+export const saveAccounts = () => persist();
 export const accountById = (id: string) => store().users.find((u) => u.id === id);
 /** Every account whose data background jobs should look after. */
-export const activeUserIds = () => (singleUser() ? [LOCAL_USER] : store().users.filter((u) => u.status === 'active').map((u) => u.id));
+export const activeUserIds = () => (singleUser() ? [LOCAL_USER] : store().users.filter((u) => u.status === 'active' && !u.guest).map((u) => u.id));
 
 export function markOnboarded(id: string, name?: string) {
   const account = accountById(id);
@@ -270,6 +317,73 @@ export function deleteAccount(id: string, by: string) {
   persist();
   eraseUserData(id);
   log.info('admin', 'Account deleted with its data', { target: id, by });
+}
+
+// ---- The demo without an account ---------------------------------------------------------------
+
+const GUEST_MINUTES = 60;
+const GUESTS_AT_ONCE = 40;
+const GUESTS_PER_VISITOR_AN_HOUR = 6;
+
+export const guestDemoOpen = () => !needsSetup() && store().guestDemo !== false;
+
+function removeGuest(id: string) {
+  const data = store();
+  data.users = data.users.filter((u) => u.id !== id);
+  data.sessions = data.sessions.filter((s) => s.userId !== id);
+  persist();
+  eraseUserData(id);
+}
+
+/** Clears out guests whose hour is up. Run whenever a new guest arrives. */
+function sweepGuests() {
+  for (const guest of store().users.filter((u) => u.guest && (u.guestUntil ?? 0) < Date.now())) removeGuest(guest.id);
+}
+
+/**
+ * Lets a visitor in to the demo without an account. The guest sees only sample data, cannot link
+ * anything real, lasts an hour at most, and is deleted when they leave. `paypal` says whether the
+ * guest may try PayPal actions, which the caller allows only where PayPal is in test mode.
+ */
+export function createGuest(from: string, paypal: boolean): Account {
+  if (!guestDemoOpen()) throw new AuthError(403, 'The demo without an account is switched off here.');
+  sweepGuests();
+  const attempts = (held.__substerAttempts ??= new Map());
+  const key = `guest|${from}`;
+  const record = attempts.get(key);
+  const count = record && record.until > Date.now() ? record.count : 0;
+  if (count >= GUESTS_PER_VISITOR_AN_HOUR) throw new AuthError(429, 'You have opened the demo several times. Try again in an hour, or create an account.');
+  if (store().users.filter((u) => u.guest).length >= GUESTS_AT_ONCE) throw new AuthError(429, 'The demo is busy right now. Try again in a few minutes.');
+  attempts.set(key, { count: count + 1, until: Date.now() + 60 * 60_000 });
+
+  const id = `g_${token(9)}`;
+  const guest: Account = {
+    id,
+    email: `${id}@guest.invalid`,
+    name: 'Guest',
+    salt: token(16),
+    // No password ever matches this: a guest cannot be signed in to, only handed a session.
+    passwordHash: token(48),
+    role: 'user',
+    status: 'active',
+    permissions: { assistant: true, paypal, connect: false },
+    deviceKey: `sk_${token(24)}`,
+    createdAt: new Date().toISOString(),
+    onboardedAt: new Date().toISOString(),
+    guest: true,
+    guestUntil: Date.now() + GUEST_MINUTES * 60_000,
+  };
+  store().users.push(guest);
+  persist();
+  log.info('auth', 'Guest demo started', { userId: id });
+  return guest;
+}
+
+export function setGuestDemo(open: boolean, by: string) {
+  store().guestDemo = open;
+  if (!open) for (const guest of store().users.filter((u) => u.guest)) removeGuest(guest.id);
+  persist();
+  log.info('admin', `Demo without an account ${open ? 'switched on' : 'switched off'}`, { by });
 }
 
 export function setSignups(open: boolean, by: string) {

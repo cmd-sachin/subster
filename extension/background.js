@@ -165,10 +165,44 @@ chrome.permissions.onAdded.addListener(() => void serial(checkSignIn));
 chrome.windows.onFocusChanged.addListener(() => void serial(settle));
 chrome.idle.onStateChanged.addListener(() => void serial(settle));
 
+/**
+ * Keeps the set-up script running on the user's Subster site when that site is not on this
+ * machine. Local addresses are covered by the manifest; any other needs the user's permission
+ * for that one address, which the popup asks for.
+ */
+async function watchServer(serverUrl) {
+  const origin = new URL(serverUrl).origin;
+  const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  await chrome.scripting.unregisterContentScripts({ ids: ['subster-link'] }).catch(() => {});
+  if (local || !(await chrome.permissions.contains({ origins: [`${origin}/*`] }))) return;
+  await chrome.scripting.registerContentScripts([{ id: 'subster-link', matches: [`${origin}/*`], js: ['link.js'], runAt: 'document_idle', persistAcrossSessions: true }]);
+}
+
+/**
+ * The site offers a device key. It is kept only if that same server accepts it, so a page that
+ * is not Subster cannot point this extension anywhere.
+ */
+async function link(serverUrl, deviceKey) {
+  const origin = new URL(serverUrl).origin;
+  try {
+    const check = await fetch(`${origin}/api/usage`, { headers: { Accept: 'application/json', Authorization: `Bearer ${deviceKey}` } });
+    const listed = check.ok ? await check.json() : null;
+    if (!listed || !Array.isArray(listed.sites)) return { ok: false };
+  } catch {
+    return { ok: false };
+  }
+  await store.set({ serverUrl: origin, deviceKey });
+  await watchServer(origin);
+  await serial(() => settle().then(sync));
+  return { ok: true };
+}
+
 // The popup asks for a fresh state, a sync, or what the current tab counts as.
 chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   if (message?.type === 'sync') void serial(() => settle().then(sync)).then(() => reply({ done: true }));
   else if (message?.type === 'settle') void serial(settle).then(() => reply({ done: true }));
+  else if (message?.type === 'link' && typeof message.serverUrl === 'string' && typeof message.deviceKey === 'string') void link(message.serverUrl, message.deviceKey).then(reply, () => reply({ ok: false }));
+  else if (message?.type === 'watch' && typeof message.serverUrl === 'string') void watchServer(message.serverUrl).then(() => reply({ done: true }), () => reply({ done: false }));
   else return false;
   return true;
 });

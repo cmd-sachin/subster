@@ -28,7 +28,7 @@ async function POST({ request }: RouteContext) {
 // A new key for the browser extension and the phone app; the old one stops working.
 function PUT() {
   const account = currentAccount();
-  return account ? json({ deviceKey: newDeviceKey(account.id) }) : fail(400, 'There are no accounts in single-user mode.');
+  return account && !account.guest ? json({ deviceKey: newDeviceKey(account.id) }) : fail(400, 'There are no accounts in single-user mode.');
 }
 
 export const Route = createFileRoute('/api/auth/onboard')({

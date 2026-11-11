@@ -119,13 +119,23 @@ SDKs and a developer portal for it.
 
 - Each person has their own account and their own data, kept apart on disk. Passwords are stored
   as salted scrypt hashes and sessions as hashes of their tokens, in an HttpOnly cookie.
+- **Demo without an account.** The sign-in screen has a "Try the demo" button. It makes a guest who
+  sees sample data only, cannot link anything real, may try PayPal only in test mode, lasts an
+  hour at most, and is signed out and deleted when the demo ends. An administrator can switch it
+  off.
+- **Signing in.** Email and password, plus three free additions an account can use:
+  an **authenticator app** (six-digit codes, checked here with no outside service), **passkeys**
+  (fingerprint, face or device PIN through WebAuthn), and **email codes** (a six-digit code in
+  place of the password, which is also the way back in after a forgotten one; needs
+  `RESEND_API_KEY` and `EMAIL_FROM`). They are managed under the account menu, Sign-in security.
 - The first account is the administrator (or name one with `ADMIN_EMAIL` and `ADMIN_PASSWORD`).
   The **Admin** page lists accounts, opens or closes sign-ups, adds people, changes roles,
   suspends or deletes an account, and switches three permissions per person: the assistant,
   PayPal actions, and linking accounts. It also shows the server logs, live.
 - An administrator sees who has an account and how much it holds, not anyone's subscriptions.
-- The browser extension and the phone app report usage with a per-account **device key**, shown
-  on the Connect page. It opens nothing else.
+- The browser extension sets itself up: open Subster in a browser that has it and the site hands
+  it the account's **device key**. On a deployed address, press Connect in the extension once.
+  The phone app takes the same key, pasted from the Connect page. The key opens nothing else.
 - Background work (the daily audit, connection checks, price reading) runs for every account, and
   a PayPal webhook is handed to whichever account holds that agreement.
 
@@ -171,8 +181,10 @@ Run and checked:
   JustWatch title pages.
 - The Chrome extension, loaded in Chrome: it synced and reported a site as in use within seconds
   (before device keys were added; the key path is covered by the end-to-end test, not in Chrome).
-- Accounts, permissions, onboarding, the demo and its ending: 41 end-to-end checks, run against
-  the dev server and against the built container.
+- Accounts, permissions, onboarding, the demo and its ending, authenticator codes and email
+  codes, and the guest demo: 71 end-to-end checks, run against the dev server and the built container. Passkeys and
+  the extension's self set-up were run in Chrome (passkeys with a virtual authenticator).
+- Email codes were run through a test outbox, not through a real email provider.
 
 Written but not run against the real service:
 - Plaid, the Setu Account Aggregator connector and Spotify sign-in. No keys were available.
@@ -186,7 +198,8 @@ Written but not run against the real service:
 
 - **Storage is files.** One JSON document per account, on one node. It suits a small deployment;
   a larger one needs the store adapter backed by a database.
-- **No password reset by email.** An administrator sets a new password for someone.
+- **Forgotten passwords** are recovered with an email code where email is set up; otherwise an
+  administrator sets a new one.
 - **PayPal bills subscriptions in US dollars here**, so only dollar-priced plans can be started
   from Subster. Everything else works in the user's own currency, never converted.
 - **Indian bank accounts.** Plaid does not cover India and production Account Aggregator access is
@@ -211,7 +224,7 @@ npm run build && npm start
 npm run typecheck && npm run lint
 npm test             # statement parser
 npm run test:extension
-npm run test:e2e     # the whole path over HTTP: BASE=http://localhost:3100, against an empty data folder
+npm run test:e2e     # the whole path over HTTP, against a server with an empty data folder (see tests/e2e.mjs)
 npm run smoke        # older single-user checks: start the server with SUBSTER_SINGLE_USER=1
 npm run gateway      # forwards only webhook and callback paths, for use behind a tunnel
 npm run tunnel       # public https address for the gateway

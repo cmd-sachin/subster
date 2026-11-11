@@ -1,13 +1,52 @@
 {
   "manifest_version": 3,
   "name": "Subster usage",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Tells Subster, live, which of your subscription sites you are using and whether you are signed in. Daily totals and yes/no answers only.",
   "minimum_chrome_version": "120",
-  "permissions": ["tabs", "idle", "alarms", "storage", "cookies"],
-  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
-  "optional_host_permissions": ["https://*/*"],
-  "background": { "service_worker": "background.js", "type": "module" },
-  "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" },
-  "action": { "default_title": "Subster usage", "default_popup": "popup.html", "default_icon": { "16": "icon-16.png", "48": "icon-48.png" } }
+  "permissions": [
+    "tabs",
+    "idle",
+    "alarms",
+    "storage",
+    "cookies",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_title": "Subster usage",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "link.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

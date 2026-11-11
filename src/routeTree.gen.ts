@@ -36,8 +36,10 @@ import { Route as ApiUpiRouteImport } from './routes/api/upi'
 import { Route as ApiUsageRouteImport } from './routes/api/usage'
 import { Route as ApiAccountsLinkRouteImport } from './routes/api/accounts/link'
 import { Route as ApiActionsIdRouteImport } from './routes/api/actions/$id'
+import { Route as ApiAuthGuestRouteImport } from './routes/api/auth/guest'
 import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
 import { Route as ApiAuthOnboardRouteImport } from './routes/api/auth/onboard'
+import { Route as ApiAuthSecurityRouteImport } from './routes/api/auth/security'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiBankCallbackRouteImport } from './routes/api/bank/callback'
 import { Route as ApiBankCandidatesRouteImport } from './routes/api/bank/candidates'
@@ -195,6 +197,11 @@ const ApiActionsIdRoute = ApiActionsIdRouteImport.update({
   path: '/api/actions/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthGuestRoute = ApiAuthGuestRouteImport.update({
+  id: '/api/auth/guest',
+  path: '/api/auth/guest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
   id: '/api/auth/me',
   path: '/api/auth/me',
@@ -203,6 +210,11 @@ const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
 const ApiAuthOnboardRoute = ApiAuthOnboardRouteImport.update({
   id: '/api/auth/onboard',
   path: '/api/auth/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSecurityRoute = ApiAuthSecurityRouteImport.update({
+  id: '/api/auth/security',
+  path: '/api/auth/security',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
@@ -342,8 +354,10 @@ export interface FileRoutesByFullPath {
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/guest': typeof ApiAuthGuestRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/security': typeof ApiAuthSecurityRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
@@ -394,8 +408,10 @@ export interface FileRoutesByTo {
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/guest': typeof ApiAuthGuestRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/security': typeof ApiAuthSecurityRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
@@ -447,8 +463,10 @@ export interface FileRoutesById {
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/guest': typeof ApiAuthGuestRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/security': typeof ApiAuthSecurityRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
@@ -501,8 +519,10 @@ export interface FileRouteTypes {
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/guest'
     | '/api/auth/me'
     | '/api/auth/onboard'
+    | '/api/auth/security'
     | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
@@ -553,8 +573,10 @@ export interface FileRouteTypes {
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/guest'
     | '/api/auth/me'
     | '/api/auth/onboard'
+    | '/api/auth/security'
     | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
@@ -605,8 +627,10 @@ export interface FileRouteTypes {
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/guest'
     | '/api/auth/me'
     | '/api/auth/onboard'
+    | '/api/auth/security'
     | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
@@ -658,8 +682,10 @@ export interface RootRouteChildren {
   ApiUsageRoute: typeof ApiUsageRoute
   ApiAccountsLinkRoute: typeof ApiAccountsLinkRoute
   ApiActionsIdRoute: typeof ApiActionsIdRoute
+  ApiAuthGuestRoute: typeof ApiAuthGuestRoute
   ApiAuthMeRoute: typeof ApiAuthMeRoute
   ApiAuthOnboardRoute: typeof ApiAuthOnboardRoute
+  ApiAuthSecurityRoute: typeof ApiAuthSecurityRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiBankCallbackRoute: typeof ApiBankCallbackRoute
   ApiBankCandidatesRoute: typeof ApiBankCandidatesRoute
@@ -874,6 +900,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiActionsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/guest': {
+      id: '/api/auth/guest'
+      path: '/api/auth/guest'
+      fullPath: '/api/auth/guest'
+      preLoaderRoute: typeof ApiAuthGuestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/me': {
       id: '/api/auth/me'
       path: '/api/auth/me'
@@ -886,6 +919,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/onboard'
       fullPath: '/api/auth/onboard'
       preLoaderRoute: typeof ApiAuthOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/security': {
+      id: '/api/auth/security'
+      path: '/api/auth/security'
+      fullPath: '/api/auth/security'
+      preLoaderRoute: typeof ApiAuthSecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/session': {
@@ -1066,8 +1106,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUsageRoute: ApiUsageRoute,
   ApiAccountsLinkRoute: ApiAccountsLinkRoute,
   ApiActionsIdRoute: ApiActionsIdRoute,
+  ApiAuthGuestRoute: ApiAuthGuestRoute,
   ApiAuthMeRoute: ApiAuthMeRoute,
   ApiAuthOnboardRoute: ApiAuthOnboardRoute,
+  ApiAuthSecurityRoute: ApiAuthSecurityRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiBankCallbackRoute: ApiBankCallbackRoute,
   ApiBankCandidatesRoute: ApiBankCandidatesRoute,

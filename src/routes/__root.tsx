@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import { LiveUpdates } from '@/components/app-state';
 import { AlertWatcher, Toasts } from '@/components/notifications';
+import { ExtensionLink } from '@/components/extension-link';
 import { Gate } from '@/components/session';
 import { Shell } from '@/components/shell';
 import { Walkthrough } from '@/components/walkthrough';
@@ -50,6 +51,7 @@ function App() {
       <Gate>
         <LiveUpdates />
         <AlertWatcher />
+        <ExtensionLink />
         <Shell>
           <Outlet />
         </Shell>

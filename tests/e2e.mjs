@@ -52,7 +52,7 @@ check('nothing is readable signed out', (await stranger('GET', '/api/state')).st
 
 let r = await admin('POST', '/api/auth/session', { ...adminLogin, create: true });
 check('the first account is the administrator', r.status === 200 && r.data.user.role === 'admin', r.text);
-r = await user('POST', '/api/auth/session', { ...userLogin, create: true });
+r = await user('POST', '/api/auth/session', { ...userLogin, create: true, currency: 'EUR' });
 check('the second account is a member', r.status === 200 && r.data.user.role === 'user', r.text);
 const userId = r.data.user.id;
 
@@ -65,7 +65,7 @@ check('a member cannot list accounts', (await user('GET', '/api/admin/users')).s
 // ---- Welcome, then the demo --------------------------------------------------------------------
 me = (await user('GET', '/api/auth/me')).data;
 check('a new account has not been welcomed yet', !me.user.onboardedAt);
-r = await user('POST', '/api/auth/onboard', { name: 'Uma', currency: 'INR', demo: true });
+r = await user('POST', '/api/auth/onboard', { name: 'Uma', demo: true });
 check('finishing the welcome works', r.status === 200, r.text);
 me = (await user('GET', '/api/auth/me')).data;
 check('the welcome is remembered, with the new name', Boolean(me.user.onboardedAt) && me.user.name === 'Uma');
@@ -133,6 +133,81 @@ check('ending the demo returns to their own, empty data', r.status === 200 && r.
 r = await user('POST', '/api/upi', { vpa: 'uma.test@okhdfcbank' });
 check('their own data takes a UPI ID', r.status === 200 && r.data.upiIds.length === 1, r.text.slice(0, 200));
 check('a malformed UPI ID is refused', (await user('POST', '/api/upi', { vpa: 'not a upi id' })).status === 400);
+
+// ---- Other ways to sign in ---------------------------------------------------------------------
+check('the currency chosen at sign-up is kept', (await user('GET', '/api/state')).data.settings.currency === 'EUR');
+
+// An authenticator app: the same sum the phone does (RFC 6238), so the server's check is tested
+// against an independent implementation.
+function totp(secret, at = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = [...secret].map((c) => alphabet.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const digest = crypto.createHmac('sha1', key).update(counter).digest();
+  const offset = digest[digest.length - 1] & 0xf;
+  return String((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+}
+r = await user('POST', '/api/auth/security', { action: 'totp-start' });
+const totpSecret = r.data.secret;
+check('setting up an authenticator app gives a key and a QR code', r.status === 200 && /^[A-Z2-7]{32}$/.test(totpSecret) && r.data.qr.startsWith('<svg'), r.text.slice(0, 120));
+check('a wrong code does not turn it on', (await user('POST', '/api/auth/security', { action: 'totp-confirm', code: '000000' })).status === 400);
+r = await user('POST', '/api/auth/security', { action: 'totp-confirm', code: totp(totpSecret) });
+check('the right code turns it on', r.status === 200 && r.data.user.security.totp === true, r.text.slice(0, 160));
+
+const phone = client();
+r = await phone('POST', '/api/auth/session', { email: userLogin.email, password: userLogin.password });
+check('the password alone no longer signs in', r.status === 200 && r.data.step === 'authenticator' && !r.data.user, r.text.slice(0, 160));
+check('and opens nothing yet', (await phone('GET', '/api/state')).status === 401);
+check('a wrong authenticator code is refused', (await phone('POST', '/api/auth/session', { ticket: r.data.ticket, code: '123456' })).status === 401);
+const second = await phone('POST', '/api/auth/session', { ticket: r.data.ticket, code: totp(totpSecret) });
+check('the right authenticator code signs in', second.status === 200 && Boolean(second.data.user) && (await phone('GET', '/api/state')).status === 200, second.text.slice(0, 160));
+check('turning it off needs a current code', (await user('POST', '/api/auth/security', { action: 'totp-remove', code: '000000' })).status === 400);
+r = await user('POST', '/api/auth/security', { action: 'totp-remove', code: totp(totpSecret) });
+check('with one, it turns off', r.status === 200 && r.data.user.security.totp === false);
+
+// A code by email. Only when the server was started with the test outbox (SUBSTER_EMAIL_OUTBOX=1)
+// and this test is told where its data folder is.
+const outbox = process.env.SUBSTER_DATA_DIR && `${process.env.SUBSTER_DATA_DIR}/outbox.json`;
+if ((await stranger('GET', '/api/auth/me')).data.emailCodes && outbox) {
+  const fs = await import('node:fs');
+  check('asking for a code for an unknown address looks the same', (await stranger('PUT', '/api/auth/session', { email: `nobody-${tag}@example.test` })).status === 200);
+  r = await stranger('PUT', '/api/auth/session', { email: userLogin.email });
+  const mail = JSON.parse(fs.readFileSync(outbox, 'utf8'));
+  const emailed = mail.text.match(/\b(\d{6})\b/)?.[1];
+  check('a sign-in code is emailed to the account', r.status === 200 && mail.to === userLogin.email && Boolean(emailed));
+  const inbox = client();
+  check('a wrong emailed code is refused', (await inbox('POST', '/api/auth/session', { email: userLogin.email, code: emailed === '111111' ? '222222' : '111111' })).status === 401);
+  r = await inbox('POST', '/api/auth/session', { email: userLogin.email, code: emailed });
+  check('the emailed code signs in without the password', r.status === 200 && Boolean(r.data.user), r.text.slice(0, 160));
+  check('and cannot be used twice', (await client()('POST', '/api/auth/session', { email: userLogin.email, code: emailed })).status === 401);
+} else console.log('SKIP email codes (start the server with SUBSTER_EMAIL_OUTBOX=1 and pass SUBSTER_DATA_DIR to this test)');
+
+check('passkey sign-in offers a challenge', (await stranger('POST', '/api/auth/security', { action: 'passkey-signin-options' })).data.options?.challenge?.length > 10);
+check('security settings need a signed-in account', (await stranger('POST', '/api/auth/security', { action: 'totp-start' })).status === 401);
+
+// ---- The demo without an account ---------------------------------------------------------------
+const guest = client();
+r = await guest('POST', '/api/auth/guest', {});
+const guestId = r.data.user?.id;
+check('a visitor can open the demo without an account', r.status === 200 && r.data.user.guest === true, r.text.slice(0, 160));
+state = (await guest('GET', '/api/state')).data;
+check('the guest sees sample data', state.demo === true && state.portfolio.insights.length > 5);
+check('the guest is given no device key', (await guest('GET', '/api/auth/me')).data.deviceKey === undefined);
+check('the guest cannot link anything real', (await guest('POST', '/api/upi', { vpa: 'guest.test@okaxis' })).status === 403);
+check('the guest cannot set up sign-in security', (await guest('POST', '/api/auth/security', { action: 'totp-start' })).status === 403);
+check('the guest cannot reach the admin page', (await guest('GET', '/api/admin/users')).status === 403);
+check('the guest cannot swap the demo for stored data', (await guest('POST', '/api/demo', { open: false })).status === 400);
+check('the guest can use the assistant', (await guest('POST', '/api/agent', { mode: 'chat', engine: 'rules', message: 'What renews this week?' })).status === 200);
+check('the administrator sees the guest', (await admin('GET', '/api/admin/users')).data.users.some((u) => u.id === guestId && u.guest));
+await guest('DELETE', '/api/auth/session');
+check('ending the demo signs the guest out', (await guest('GET', '/api/state')).status === 401);
+check('and deletes the guest', !(await admin('GET', '/api/admin/users')).data.users.some((u) => u.id === guestId));
+await admin('POST', '/api/admin/users', { guestDemo: false });
+check('the administrator can switch the demo login off', (await client()('POST', '/api/auth/guest', {})).status === 403 && (await stranger('GET', '/api/auth/me')).data.guestDemo === false);
+await admin('POST', '/api/admin/users', { guestDemo: true });
+check('and back on', (await stranger('GET', '/api/auth/me')).data.guestDemo === true);
 
 // ---- Suspension and signing out ----------------------------------------------------------------
 await admin('POST', `/api/admin/users/${userId}`, { status: 'suspended' });

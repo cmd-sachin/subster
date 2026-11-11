@@ -37,3 +37,10 @@ asks for permission to reach it when you save it.
   is not measured, because time on that site says nothing about the subscription.
 
 `npm run test:extension` checks the matching rules; the Chrome parts are checked by hand.
+
+## Setting up
+
+The extension sets itself up. Open your Subster site in this browser and sign in: on this machine
+(localhost) it links by itself; on a deployed address, click the extension and press **Connect to
+the Subster tab** once, which also asks for permission for that one address. After that it keeps
+itself linked, including when the device key is replaced.

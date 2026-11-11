@@ -10,6 +10,7 @@ import type { AppState } from '@/domain/types';
 import { useApp } from './app-state';
 import { notify } from './notifications';
 import { PayPalMark } from './paypal-mark';
+import { useSession } from './session';
 
 // ---- Where the tour is, remembered in the browser ----------------------------------------------
 
@@ -118,6 +119,8 @@ const STEPS: Step[] = [
 /** Mounted once, inside the app. Shows only while sample data is open. */
 export function Walkthrough() {
   const { state, mutate } = useApp();
+  const { me, signOut } = useSession();
+  const guest = me?.user?.guest === true;
   const navigate = useNavigate();
   const { step: at, small } = useSyncExternalStore(subscribe, get, () => START);
   const [busy, setBusy] = useState(false);
@@ -134,6 +137,11 @@ export function Walkthrough() {
 
   async function endDemo() {
     setBusy(true);
+    // A guest has no data of their own: ending the demo signs them out, which deletes the guest.
+    if (guest) {
+      restartTour();
+      return void signOut();
+    }
     const res = await mutate('/api/demo', { open: false });
     setBusy(false);
     if (!res.ok) return notify({ tone: 'bad', title: 'The demo could not be closed', body: 'Please try again.' });
@@ -186,7 +194,7 @@ export function Walkthrough() {
               )}
               {step.title}
             </h2>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{step.body}</p>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{last && guest ? 'End the demo to sign out. Nothing you did here is kept. Create an account to use Subster with your own data.' : step.body}</p>
             {paypalOff && index >= 2 && index <= 4 && <p className="mt-2 rounded-xl bg-warn-soft px-3 py-2 text-[12px] text-warn">PayPal is not connected on this server yet, so this step can be read but not tried.</p>}
           </div>
 
@@ -203,7 +211,7 @@ export function Walkthrough() {
             )}
             {last ? (
               <button onClick={endDemo} disabled={busy} className="ml-auto flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on disabled:opacity-50">
-                {busy ? 'Ending' : 'End demo, use my data'}
+                {busy ? 'Ending' : guest ? 'End demo and sign out' : 'End demo, use my data'}
               </button>
             ) : (
               <button onClick={() => set({ step: index + 1 })} className="ml-auto flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on">

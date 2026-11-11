@@ -14,6 +14,7 @@ export const Route = createFileRoute('/admin')({ component: Admin });
 type Person = SessionUser & { subscriptions: number; demo: boolean; paypalAgreements: number };
 interface People {
   signups: boolean;
+  guestDemo: boolean;
   users: Person[];
 }
 const USERS_KEY = ['admin-users'] as const;
@@ -72,13 +73,13 @@ function PeopleTab({ me }: { me: SessionUser }) {
   }
 
   if (!data) return <Loader label="Loading people" />;
-  const active = data.users.filter((u) => u.status === 'active').length;
+  const active = data.users.filter((u) => u.status === 'active' && !u.guest).length;
 
   return (
     <>
       <dl className="panel grid grid-cols-2 divide-x divide-white/[0.06] sm:grid-cols-4">
         {[
-          ['Accounts', data.users.length],
+          ['Accounts', data.users.filter((u) => !u.guest).length],
           ['Active', active],
           ['Administrators', data.users.filter((u) => u.role === 'admin').length],
           ['PayPal agreements', data.users.reduce((t, u) => t + u.paypalAgreements, 0)],
@@ -123,6 +124,14 @@ function PeopleTab({ me }: { me: SessionUser }) {
         )}
       </section>
 
+      <section className="panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <div>
+          <h2 className="text-[15px] font-semibold">Demo without an account</h2>
+          <p className="text-[13px] text-muted">{data.guestDemo ? 'The sign-in screen offers the demo. Guests see sample data only, last an hour, and are deleted when they leave.' : 'Off. People need an account to see anything.'}</p>
+        </div>
+        <Switch on={data.guestDemo} label="Offer the demo without an account" onChange={(on) => void call('/api/admin/users', { guestDemo: on })} />
+      </section>
+
       <section className="panel overflow-hidden" aria-label="Accounts">
         <ul className="divide-y divide-white/[0.06]">
           {data.users.map((u) => {
@@ -134,7 +143,8 @@ function PeopleTab({ me }: { me: SessionUser }) {
                   <p className="flex items-center gap-2 text-[14px] font-semibold">
                     {u.name}
                     {self && <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] font-normal text-muted">You</span>}
-                    {u.demo && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-normal text-warn">In demo</span>}
+                    {u.guest && <span className="rounded-full bg-sun-soft px-2 py-0.5 text-[11px] font-normal">Guest</span>}
+                    {u.demo && !u.guest && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-normal text-warn">In demo</span>}
                     {u.status === 'suspended' && <span className="rounded-full bg-bad-soft px-2 py-0.5 text-[11px] font-normal text-bad">Suspended</span>}
                   </p>
                   <p className="text-[12px] text-muted">

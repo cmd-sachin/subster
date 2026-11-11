@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
 import { ConnectionBadge, since } from '@/components/connection';
 import { useApp, type MutateResult } from '@/components/app-state';
+import { useExtension } from '@/components/extension-link';
 import { useSession } from '@/components/session';
 import { CATEGORY_LABEL, providerById, webDomains } from '@/domain/catalog';
 import { diffDays, money, today } from '@/domain/dates';
@@ -363,6 +364,7 @@ function Connections() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card id="browser" icon={Globe} title="Browser extension" badge={web.days > 0 ? `Last report ${ago(web.last)}` : 'Not reporting'} live={web.days > 0}>
             <p className="text-[13px] text-muted">Sees which subscription sites you use and whether you are signed in. Totals only.</p>
+            <ExtensionStatus />
             {web.days > 0 ? (
               <dl className="mt-3 grid grid-cols-3 gap-x-6 text-[13px]">
                 <Fact label="Subscriptions reported" value={String(web.subs)} />
@@ -370,7 +372,7 @@ function Connections() {
                 <Fact label="Sites it can measure" value={String(webSites.length)} />
               </dl>
             ) : (
-              <Steps items={['Add the Subster extension to Chrome.', 'Paste your device key into it.', 'Press Sync now, then Monitor sign-in.']} />
+              <Steps items={['Add the Subster extension to Chrome.', 'Open Subster in that browser. It connects by itself.', 'In the extension, press Monitor sign-in.']} />
             )}
             <SiteList label="Watching" empty="Nothing to watch yet." items={webSites.map((s) => ({ sub: s, text: sitesOf(s).join(', ') }))} />
           </Card>
@@ -551,6 +553,24 @@ function Health({ href, icon: Icon, name, ok, status, detail }: { href: string; 
   );
 }
 
+/** Whether the browser this page is open in has the extension, and whether it reports for this account. */
+function ExtensionStatus() {
+  const extension = useExtension();
+  const { me } = useSession();
+  if (me?.singleUser) return null;
+  const [tone, text] = extension.linked
+    ? ['bg-good', `This browser is connected${extension.version ? ` (extension ${extension.version})` : ''}.`]
+    : extension.installed
+      ? ['bg-warn', 'The extension is here but not linked yet. Reload this page, or press Connect in the extension.']
+      : ['bg-faint', 'No extension found in this browser. Once it is added, opening Subster connects it by itself.'];
+  return (
+    <p className="mt-2.5 flex items-start gap-2 rounded-2xl bg-white/[0.04] px-3.5 py-2.5 text-[13px]">
+      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${tone}`} aria-hidden="true" />
+      {text}
+    </p>
+  );
+}
+
 /** The key the browser extension and the phone app use to report usage for this account. */
 function DeviceKey() {
   const { me, refresh } = useSession();
@@ -561,7 +581,7 @@ function DeviceKey() {
 
   return (
     <Card id="device-key" icon={KeyRound} title="Device key">
-      <p className="text-[13px] text-muted">Paste this into the browser extension and the phone app so their usage reports reach your account. Treat it like a password.</p>
+      <p className="text-[13px] text-muted">The browser extension picks this up by itself when you open Subster. Paste it into the phone app. Treat it like a password.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <code className="num min-w-0 flex-1 truncate rounded-full border border-white/10 bg-black/30 px-4 py-2 text-[13px] sm:max-w-[420px]">{shown ? key : `${key.slice(0, 6)}${'•'.repeat(18)}`}</code>
         <button onClick={() => setShown(!shown)} className="rounded-full border border-white/10 px-3.5 py-2 text-[13px] hover:border-white/25">
