@@ -9,5 +9,5 @@ async function POST() {
 }
 
 export const Route = createFileRoute('/api/bank/sync')({
-  server: { handlers: { POST: handle('bank.sync', POST) } },
+  server: { handlers: { POST: handle('bank.sync', POST, { needs: 'connect' }) } },
 });

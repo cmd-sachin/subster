@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { handle, type RouteContext } from '@/server/http';
+import { handle, requirePermission, type RouteContext } from '@/server/http';
+import { db } from '@/server/store';
 import { confirmGuided, execute, reject } from '@/server/services/actions';
 import { buildState } from '@/server/services/state';
 
@@ -8,8 +9,10 @@ async function POST({ request, params }: RouteContext) {
   const { id } = params;
   const { decision } = (await request.json().catch(() => ({}))) as { decision?: string };
   try {
-    if (decision === 'approve') await execute(id, 'user', new URL(request.url).origin);
-    else if (decision === 'reject') reject(id);
+    if (decision === 'approve') {
+      if (db().actions.find((a) => a.id === id)?.channel === 'paypal_api') requirePermission('paypal');
+      await execute(id, 'user', new URL(request.url).origin);
+    } else if (decision === 'reject') reject(id);
     else if (decision === 'done') confirmGuided(id);
     else return Response.json({ error: 'decision must be approve, reject or done' }, { status: 400 });
   } catch (error) {

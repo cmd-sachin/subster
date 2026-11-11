@@ -3,7 +3,10 @@ import type { QueryClient } from '@tanstack/react-query';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import { LiveUpdates } from '@/components/app-state';
+import { AlertWatcher, Toasts } from '@/components/notifications';
+import { Gate } from '@/components/session';
 import { Shell } from '@/components/shell';
+import { Walkthrough } from '@/components/walkthrough';
 import appCss from '@/styles/app.css?url';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -43,10 +46,15 @@ function App() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <LiveUpdates />
-      <Shell>
-        <Outlet />
-      </Shell>
+      <Toasts />
+      <Gate>
+        <LiveUpdates />
+        <AlertWatcher />
+        <Shell>
+          <Outlet />
+        </Shell>
+        <Walkthrough />
+      </Gate>
     </QueryClientProvider>
   );
 }

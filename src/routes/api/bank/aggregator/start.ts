@@ -10,5 +10,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/bank/aggregator/start')({
-  server: { handlers: { POST: handle('bank.aggregator.start', POST) } },
+  server: { handlers: { POST: handle('bank.aggregator.start', POST, { needs: 'connect' }) } },
 });

@@ -246,13 +246,60 @@ export interface TimelineNote {
   label: string;
 }
 
+/** One row of a component the agent shows in the chat. */
+export interface WidgetItem {
+  label: string;
+  value?: number;
+  max?: number;
+  /** The value as the user should read it, e.g. an amount with its currency. */
+  text?: string;
+  detail?: string;
+  tone?: 'good' | 'warn' | 'bad';
+  subscriptionId?: string;
+  /** For a choice: the message sent on the user's behalf when it is picked. */
+  send?: string;
+  checked?: boolean;
+}
+
+/** A component the agent chose to show under its reply instead of writing the same thing as text. */
+export interface Widget {
+  type: 'progress' | 'stats' | 'choices' | 'checklist' | 'confirm' | 'subscriptions' | 'table';
+  title?: string;
+  note?: string;
+  items: WidgetItem[];
+  columns?: string[];
+  rows?: string[][];
+  confirmLabel?: string;
+  /** What is sent on the user's behalf when they confirm a checklist or a dialog. */
+  prompt?: string;
+}
+
 export interface RunStep {
   at: string;
   kind: 'tool' | 'thought' | 'action' | 'final';
   tool?: string;
   title: string;
   detail?: string;
+  /** The proposal this step created or found, so the chat can show it for approval in place. */
+  actionId?: string;
+  widget?: Widget;
 }
+
+/** One turn of a conversation with the agent, as it is kept and shown again later. */
+export type ChatTurn =
+  | { role: 'user'; content: string; mode: 'chat' | 'sweep'; at: string }
+  | { role: 'assistant'; content: string; steps: RunStep[]; error?: string; at: string };
+
+/** A conversation. The server holds it, so the agent keeps its context between visits. */
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  turns: ChatTurn[];
+}
+
+export type ChatSessionSummary = Pick<ChatSession, 'id' | 'title' | 'createdAt' | 'updatedAt'> & { messages: number; preview: string };
 
 export interface AgentRun {
   id: string;
@@ -280,6 +327,10 @@ export interface Db {
   refunds?: RefundRequest[];
   /** Proposals the user turned down, newest first. */
   declines?: Decline[];
+  /** UPI IDs the user linked. Optional so older documents still load. */
+  upiIds?: UpiId[];
+  /** Conversations with the agent, newest first. Optional so older documents still load. */
+  chats?: ChatSession[];
   /** When the agent last audited everything on its own schedule. */
   lastScheduledAuditAt?: string;
   /** Live lookups kept for a day, so repeating a check does not spend the model's small daily allowance. */
@@ -374,6 +425,7 @@ export interface AppState {
   demo: boolean;
   portfolio: Portfolio;
   settings: Settings;
+  upiIds: UpiId[];
   accounts: Omit<AccountConnection, 'tokens'>[];
   livePlans: Record<string, LivePlans>;
   actions: AgentAction[];
@@ -412,6 +464,13 @@ export type StreamEvent =
   | { type: 'error'; message: string };
 
 // ---- Bank link ---------------------------------------------------------------------------
+
+/** A UPI ID the user linked, kept only on this device. */
+export interface UpiId {
+  id: string;
+  vpa: string;
+  addedAt: string;
+}
 
 export interface BankTransaction {
   id: string;
@@ -466,6 +525,8 @@ export interface LogEntry {
   /** The request that caused it, when there was one. Ties service logs to an HTTP line. */
   requestId?: string;
   meta?: Record<string, unknown>;
+  /** The account the request belonged to, when there was one. */
+  userId?: string;
 }
 
 // ---- Settings, classification, linked accounts ---------------------------------------------

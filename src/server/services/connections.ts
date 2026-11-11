@@ -10,6 +10,7 @@
 // API. For those, "signed in" means the user's own browser holds a session, as reported by the
 // extension.
 
+import { eachUser } from '@/server/users';
 import { diffDays, shortDate, today } from '@/domain/dates';
 import type { AuthStatus, ConnectionSignal, Db, ServiceConnection, SubStatus, Subscription } from '@/domain/types';
 import { getSubscriptionStatus, paypalMode } from '@/server/integrations/paypal';
@@ -188,7 +189,7 @@ export async function verifyConnections(): Promise<string[]> {
 /** Starts the background monitor once per process. */
 export function startConnectionMonitor() {
   if (monitorState.__substerConnectionMonitor) return;
-  monitorState.__substerConnectionMonitor = setInterval(() => void verifyConnections().catch(() => {}), MONITOR_EVERY_MS);
+  monitorState.__substerConnectionMonitor = setInterval(() => void eachUser(() => verifyConnections()), MONITOR_EVERY_MS);
   monitorState.__substerConnectionMonitor.unref?.();
-  setTimeout(() => void verifyConnections().catch(() => {}), 20_000).unref?.();
+  setTimeout(() => void eachUser(() => verifyConnections()), 20_000).unref?.();
 }

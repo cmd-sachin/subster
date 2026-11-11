@@ -16,7 +16,7 @@ if (!existsSync(from)) {
 }
 
 mkdirSync(to, { recursive: true });
-for (const entry of ['scheduler.css', 'svalbard-dark.css', 'fontawesome', 'fonts']) {
+for (const entry of ['scheduler.css', 'svalbard-light.css', 'fontawesome', 'fonts']) {
   if (existsSync(path.join(from, entry))) cpSync(path.join(from, entry), path.join(to, entry), { recursive: true });
 }
 console.log('[copy-vendor] Bryntum styles copied to public/vendor/bryntum');

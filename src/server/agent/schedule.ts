@@ -7,6 +7,7 @@
 // whether or not the model's free daily allowance is left, and the rules already know every
 // deadline. Audits you start yourself, and chat, still use the model.
 
+import { eachUser } from '@/server/users';
 import { log } from '@/server/logger';
 import { db, save } from '@/server/store';
 import { runAgent, SWEEP_TASK } from './run';
@@ -39,7 +40,7 @@ export async function scheduledAudit(force = false) {
 /** Starts the schedule once per process. The first check waits a minute so start-up stays quick. */
 export function startAuditSchedule() {
   if (schedule.__substerAuditTimer) return;
-  schedule.__substerAuditTimer = setInterval(() => void scheduledAudit().catch(() => {}), CHECK_EVERY_MS);
+  schedule.__substerAuditTimer = setInterval(() => void eachUser(() => scheduledAudit()), CHECK_EVERY_MS);
   schedule.__substerAuditTimer.unref?.();
-  setTimeout(() => void scheduledAudit().catch(() => {}), 60_000).unref?.();
+  setTimeout(() => void eachUser(() => scheduledAudit()), 60_000).unref?.();
 }

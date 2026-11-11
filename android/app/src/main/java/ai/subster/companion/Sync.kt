@@ -19,9 +19,9 @@ object Sync {
         val prefs = Prefs(context)
         if (!UsageReader.hasAccess(context)) return SyncResult(false, "Usage access has not been granted yet.")
         return try {
-            val tracked = Api.trackedApps(prefs.serverUrl)
+            val tracked = Api.trackedApps(prefs.serverUrl, prefs.deviceKey)
             val usage = UsageReader.dailyMinutes(context, tracked.map { it.packageName }.toSet())
-            val accepted = Api.postUsage(prefs.serverUrl, usage)
+            val accepted = Api.postUsage(prefs.serverUrl, prefs.deviceKey, usage)
             val newest = usage.maxOfOrNull { it.date }
             val today = tracked
                 .map { app -> app to (usage.firstOrNull { it.packageName == app.packageName && it.date == newest }?.minutes ?: 0) }

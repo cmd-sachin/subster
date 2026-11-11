@@ -15,5 +15,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/accounts/link')({
-  server: { handlers: { POST: handle('accounts.link', POST) } },
+  server: { handlers: { POST: handle('accounts.link', POST, { needs: 'connect' }) } },
 });

@@ -42,7 +42,7 @@ async function POST({ request }: RouteContext) {
 export const Route = createFileRoute('/api/agent')({
   server: {
     handlers: {
-      POST: handle('agent', POST),
+      POST: handle('agent', POST, { needs: 'assistant' }),
     },
   },
 });

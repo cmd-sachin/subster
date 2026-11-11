@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { providerById } from '@/domain/catalog';
 import type { BillingCycle } from '@/domain/types';
-import { body, fail, handle, json, type RouteContext } from '@/server/http';
+import { body, fail, handle, json, type RouteContext, requirePermission } from '@/server/http';
 
 const CYCLES: BillingCycle[] = ['monthly', 'quarterly', 'yearly'];
 import { proposeSubscription } from '@/server/services/actions';
@@ -25,6 +25,7 @@ async function POST({ request }: RouteContext) {
   if (!provider) return fail(404, 'Unknown service');
 
   if (input.intent === 'subscribe') {
+    requirePermission('paypal');
     const proposal = proposeSubscription({ providerId: provider.id, planName: input.plan, reason: `You chose ${provider.name}${input.plan ? ` ${input.plan}` : ''} in the services directory.` });
     if (!proposal.ok) return fail(409, proposal.error);
     return json(buildState());

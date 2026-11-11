@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { handle, type RouteContext } from '@/server/http';
+import { currentAccount, handle, type RouteContext } from '@/server/http';
+import { LOCAL_USER } from '@/server/store';
 import type { LiveEvent } from '@/domain/types';
 import { subscribe } from '@/server/events';
 
@@ -12,7 +13,8 @@ async function GET({ request }: RouteContext) {
     start(controller) {
       const send = (event: LiveEvent) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       send({ type: 'hello', at: new Date().toISOString() });
-      const unsubscribe = subscribe(send);
+      const account = currentAccount();
+      const unsubscribe = subscribe(account?.id ?? LOCAL_USER, !account || account.role === 'admin', send);
       // Comment lines keep proxies from closing an idle connection.
       const heartbeat = setInterval(() => controller.enqueue(encoder.encode(': ping\n\n')), 25_000);
       cleanup = () => {

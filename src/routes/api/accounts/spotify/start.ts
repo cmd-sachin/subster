@@ -8,5 +8,5 @@ function GET({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/accounts/spotify/start')({
-  server: { handlers: { GET: handle('accounts.spotify.start', GET) } },
+  server: { handlers: { GET: handle('accounts.spotify.start', GET, { needs: 'connect' }) } },
 });

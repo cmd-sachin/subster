@@ -19,7 +19,7 @@ import type { AppState, BillingCycle, Verdict } from '@/domain/types';
 import { useApp } from './app-state';
 import { Loader } from '@/components/loader';
 
-const VENDOR_CSS = ['scheduler.css', 'svalbard-dark.css', 'fontawesome/css/fontawesome.css', 'fontawesome/css/solid.css'].map((file) => `/vendor/bryntum/${file}`);
+const VENDOR_CSS = ['scheduler.css', 'svalbard-light.css', 'fontawesome/css/fontawesome.css', 'fontawesome/css/solid.css'].map((file) => `/vendor/bryntum/${file}`);
 
 type Kind = 'renewal' | 'trial' | 'price' | 'failed' | 'deadline' | 'done' | 'review' | 'webhook' | 'bank';
 
@@ -155,7 +155,7 @@ export default function Timeline() {
       {VENDOR_CSS.map((href) => (
         <link key={href} rel="stylesheet" href={href} precedence="vendor" />
       ))}
-      <header className="flex flex-wrap items-end justify-between gap-3 px-4 pb-4 pt-8 md:px-10">
+      <header className="flex flex-wrap items-end justify-between gap-3 px-4 pb-5 pt-6 md:px-8">
         <div>
           <p className="eyebrow">{next7.length > 0 ? `${money(Math.round(dueThisWeek * 100) / 100)} due in the next 7 days` : 'Nothing due this week'}</p>
           <h1 className="mt-0.5 text-[34px] font-semibold tracking-[-0.03em]">Timeline</h1>
@@ -170,7 +170,7 @@ export default function Timeline() {
         </ul>
       </header>
 
-      <div className="subster-timeline min-h-0 flex-1 border-t border-white/[0.06]">
+      <div className="subster-timeline panel mx-4 mb-6 min-h-0 flex-1 overflow-hidden md:mx-8">
         <BryntumScheduler
           ref={scheduler}
           startDate={model.start}
@@ -178,8 +178,8 @@ export default function Timeline() {
           viewPreset="weekAndDayLetter"
           milestoneLayoutMode="estimate"
           visibleDate={{ date: new Date(addDays(model.now, -5)), block: 'start' }}
-          rowHeight={56}
-          barMargin={9}
+          rowHeight={60}
+          barMargin={12}
           resources={model.resources}
           events={model.events}
           resourceTimeRanges={model.ranges}

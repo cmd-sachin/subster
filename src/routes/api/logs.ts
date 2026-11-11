@@ -21,5 +21,5 @@ function GET({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/logs')({
-  server: { handlers: { GET: handle('logs', GET, { quiet: true }) } },
+  server: { handlers: { GET: handle('logs', GET, { quiet: true, access: 'admin' }) } },
 });

@@ -29,6 +29,7 @@ export function buildState(): AppState {
     demo: data.demo === true,
     portfolio: analyze(data),
     settings: data.settings,
+    upiIds: data.upiIds ?? [],
     accounts: data.accounts.map(({ providerId, method, displayName, product, connectedAt, lastSyncAt, checkedAt, needsReauth }) => ({ providerId, method, displayName, product, connectedAt, lastSyncAt, checkedAt, needsReauth })),
     livePlans: livePlansForRegion(),
     actions: data.actions,

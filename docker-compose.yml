@@ -1,0 +1,16 @@
+# docker compose up --build
+# Keys come from a .env file beside this one (copy .env.example). Data is kept in a named volume.
+services:
+  subster:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - subster-data:/data
+    restart: unless-stopped
+
+volumes:
+  subster-data:

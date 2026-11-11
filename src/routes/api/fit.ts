@@ -50,5 +50,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/fit')({
-  server: { handlers: { GET: handle('fit.questions', GET, { quiet: true }), POST: handle('fit', POST) } },
+  server: { handlers: { GET: handle('fit.questions', GET, { quiet: true }), POST: handle('fit', POST, { needs: 'assistant' }) } },
 });

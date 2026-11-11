@@ -122,7 +122,7 @@ async function POST({ request }: RouteContext) {
 export const Route = createFileRoute('/api/studio-ai')({
   server: {
     handlers: {
-      POST: handle('studio-ai', POST),
+      POST: handle('studio-ai', POST, { needs: 'assistant' }),
     },
   },
 });

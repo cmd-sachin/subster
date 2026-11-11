@@ -30,9 +30,29 @@ How you work:
 - Deadlines matter. Deal first with whatever charges soonest.
 - Leave subscriptions that are good value alone, and don't propose something that already has an open proposal.
 
-When you finish, write a short plain-text summary for the user: what you found, what is now waiting in their inbox with the total monthly saving, and anything you deliberately left alone. No markdown headings or tables. The user's amounts are in the currency reported by list_subscriptions; plan prices from search_services say whether they came from the official site or from the built-in US list prices.
+Answering in chat:
+- Answer the question that was asked, and only that. A question is not a request for an audit. If the user asks something you can answer from the conversation so far, answer without calling tools again, and never repeat a proposal you already made in this conversation.
+- For anything about accounts, payment methods, privacy or "how do you know", call get_account_context and answer from it. Never claim to know something it does not show. You do not know which PayPal account the user has: they choose it when they sign in at PayPal to confirm.
+- When the user's request is unclear or a choice is theirs (which plan, which of two services), ask one short question instead of guessing.
+- When something cannot be done, say so in the first sentence and give the nearest thing that can.
 
-Starting subscriptions: when the user asks to subscribe to or sign up for an app, use search_services to find it and its plans, then propose_subscription. If they did not name a plan and the app has several, ask which one before proposing. A proposal buys nothing: the user approves it in the inbox and confirms the agreement at PayPal.`;
+Starting subscriptions: when the user asks to subscribe to or sign up for an app, use search_services to find it and its plans, then propose_subscription. If they did not name a plan and the app has several, ask which one before proposing. Be exact about what this is: the plan is billed by Subster through a PayPal agreement in US dollars, which is what lets the user pause or cancel it here in one tap. It does not open an account at the provider. If search_services shows accepts_paypal false for that provider, say in one sentence that the provider itself does not take PayPal and that this agreement is with Subster, then still propose it if that is what they want. A proposal buys nothing.
+
+Components: use the show tool whenever a component says it better than a sentence. The reply text then only adds what the component cannot.
+- Several amounts, hours or scores side by side: "progress". Two to four headline numbers: "stats". A set of the user's subscriptions: "subscriptions". Plans or alternatives compared: "table".
+- A choice that is the user's, such as which plan: "choices", never a question in prose with the options listed.
+- Several things the user might act on at once, such as what to cancel after "what can I cut": "checklist" with the strongest ones checked, each with its monthly saving in text. When the selection comes back, call propose_action for each one.
+- Before a large step the user did not spell out, such as proposing several cancellations at once: "confirm".
+- When you show a component, the text is one or two sentences: the headline number and what to do. Do not list in text what the component already lists.
+- At most two components in a reply, and never the same kind twice: get it right in one call, it cannot be corrected. Never use one for a single fact.
+
+Approval cards: every proposal you make is shown to the user as a card with buttons directly under your reply. So do not tell them to go to an inbox, do not restate the card's contents, and do not paste links for approval. One sentence pointing at the card is enough.
+
+How you write:
+- Short. Lead with the answer. Usually two to five sentences or a few bullets. No preamble, no restating the question, no closing offers.
+- Markdown is rendered: use **bold** for the one or two numbers or names that matter, and "- " bullets for lists of three or more. No headings, no tables, no emojis, no dashes used as punctuation.
+- After an audit: what you found, what now needs a decision with the total monthly saving, and what you deliberately left alone, in at most four bullets.
+- Amounts are in the currency reported by list_subscriptions; never convert. Plan prices from search_services say whether they came from the official site or from the built-in list prices.`;
 
 type Emit = (event: StreamEvent) => void;
 
@@ -66,7 +86,17 @@ export async function runAgent(options: RunOptions, emit: Emit): Promise<AgentRu
 
   try {
     log.info('agent', `Run started (${options.trigger})`, { runId: run.id, engine, detail: options.triggerDetail });
-    run.summary = engine === 'gemini' ? await geminiLoop(run, options, record, emit) : await rulesWorkflow(run, options, record, emit);
+    if (engine === 'gemini') {
+      try {
+        run.summary = await geminiLoop(run, options, record, emit);
+      } catch (error) {
+        // The model is out of allowance or unreachable. The built-in rules finish the job from the
+        // same data, so the user still gets an answer and their proposals.
+        log.warn('agent', 'Model unavailable, finishing with the built-in rules', { runId: run.id, error: describeLlmError(error) });
+        run.engine = 'rules';
+        run.summary = await rulesWorkflow(run, options, record, emit);
+      }
+    } else run.summary = await rulesWorkflow(run, options, record, emit);
   } catch (error) {
     const message = describeLlmError(error);
     log.error('agent', 'Run stopped by an error', { runId: run.id, error: message });
@@ -120,7 +150,7 @@ async function geminiLoop(run: AgentRun, options: RunOptions, record: (s: Omit<R
     for (const call of calls) {
       const name = call.name ?? '';
       const outcome = await runTool(name, (call.args ?? {}) as Record<string, unknown>, run.id);
-      record({ kind: outcome.proposed ? 'action' : 'tool', tool: name, title: outcome.summary, detail: describeInput(call.args) });
+      record({ kind: outcome.proposed ? 'action' : 'tool', tool: name, title: outcome.summary, detail: describeInput(call.args), actionId: outcome.actionId, widget: outcome.widget });
       results.push(createPartFromFunctionResponse(call.id ?? name, name, outcome.isError ? { error: outcome.result } : { result: outcome.result }));
     }
     // All results for one model turn go back together in a single user turn.
@@ -143,7 +173,7 @@ const describeInput = (input: unknown) => {
 async function rulesWorkflow(run: AgentRun, options: RunOptions, record: (s: Omit<RunStep, 'at'>) => void, emit: Emit) {
   const call = async (name: string, input: Record<string, unknown> = {}) => {
     const outcome = await runTool(name, input, run.id);
-    record({ kind: outcome.proposed ? 'action' : 'tool', tool: name, title: outcome.summary, detail: describeInput(input) });
+    record({ kind: outcome.proposed ? 'action' : 'tool', tool: name, title: outcome.summary, detail: describeInput(input), actionId: outcome.actionId, widget: outcome.widget });
     return outcome;
   };
 
@@ -239,13 +269,28 @@ async function answerFromFacts(question: string, call: (name: string, input?: Re
       if (usdPlans.length === 0) return `${app.name} cannot be started from here because I have no confirmed plan list for it. Subscribe on its site (${app.manageUrl}) and I will pick up the payment from your bank feed or statement.${note}`;
       const plan = [...usdPlans].sort((a, b) => b.name.length - a.name.length).find((p) => q.includes(p.name.toLowerCase()));
       if (!plan && usdPlans.length > 1) {
-        return `${app.name} has ${usdPlans.length} plans: ${usdPlans.map((p) => `${p.name} at ${money(p.price, 'USD')}`).join(', ')}. Which one do you want? Say for example "subscribe to ${app.name} ${usdPlans[0].name}".${note}`;
+        await call('show', { type: 'choices', title: `${app.name} plans`, items: usdPlans.map((p) => ({ label: p.name, text: money(p.price, 'USD'), send: `Subscribe to ${app.name} ${p.name}` })) });
+        return `**${app.name}** has ${usdPlans.length} plans. Which one?${note}`;
       }
       const chosen = plan ?? usdPlans[0];
       const outcome = (await call('propose_subscription', { app_id: app.id, plan: chosen.name, reason: `You asked to subscribe to ${app.name} ${chosen.name}.` })) as { result: { error?: string } };
       if (outcome.result.error) return `${outcome.result.error}${note}`;
-      return `I put "Subscribe to ${app.name} ${chosen.name}" in your inbox at ${money(chosen.price, 'USD')}. Nothing is charged yet: approve it there and confirm the agreement at PayPal.${note}`;
+      return `**${app.name} ${chosen.name}** at **${money(chosen.price, 'USD')}** is ready below. Nothing is charged until you approve and confirm at PayPal.${note}`;
     }
+  }
+
+  // A checklist coming back: "Go ahead with: cancel Netflix, pause Spotify"
+  if (/^go ahead with:/i.test(question.trim())) {
+    let made = 0;
+    for (const part of question.split(':').slice(1).join(':').split(',')) {
+      const wanted = part.trim().toLowerCase();
+      const type = wanted.match(/^(cancel|pause|resume|downgrade)\b/)?.[1];
+      const insight = type && portfolio.insights.find((i) => wanted.includes(i.sub.name.toLowerCase()));
+      if (!type || !insight) continue;
+      const outcome = (await call('propose_action', { subscription_id: insight.sub.id, type, reason: insight.recommendation.reason, evidence: insight.issues.map((x) => x.message) })) as { result: { error?: string } };
+      if (!outcome.result.error) made++;
+    }
+    return made ? `Ready below. Nothing changes until you approve each one.${note}` : `I could not prepare those. Some may already be waiting for you, or were turned down recently.${note}`;
   }
 
   // "cancel netflix", "pause spotify", "resume netflix"
@@ -256,13 +301,31 @@ async function answerFromFacts(question: string, call: (name: string, input?: Re
     const type = verb === 'stop' ? 'cancel' : verb;
     const outcome = (await call('propose_action', { subscription_id: target.sub.id, type, reason: `You asked to ${type} ${target.sub.name}.` })) as { result: { error?: string; channel?: string } };
     if (outcome.result.error) return `${outcome.result.error}${note}`;
-    return `I put "${type} ${target.sub.name}" in your inbox. ${outcome.result.channel === 'paypal_api' ? 'Approving it runs the change through PayPal and verifies it.' : 'It is not billed through PayPal, so approving it takes you to the official page to finish.'}${note}`;
+    return `Ready below: **${type} ${target.sub.name}**. ${outcome.result.channel === 'paypal_api' ? 'Approving it runs the change through PayPal and confirms it.' : 'It is not billed through PayPal, so approving it takes you to the official page to finish.'}${note}`;
+  }
+
+  // A question about one subscription by name: answer about that one, not the whole portfolio.
+  const named = portfolio.insights.filter((i) => q.includes(i.sub.name.toLowerCase())).sort((a, b) => b.sub.name.length - a.sub.name.length)[0];
+  if (named && !/next 30|all my|everything/.test(q)) {
+    await call('get_subscription_detail', { subscription_id: named.sub.id });
+    await call('show', { type: 'subscriptions', items: [{ subscription_id: named.sub.id }] });
+    const r = named.recommendation;
+    const use = named.verdict === 'unmeasured' ? 'I have no usage for it yet, so I cannot judge its value.' : `You used it **${named.hours30} hours** in the last 30 days${named.costPerHour ? `, which works out at **${money(named.costPerHour)} an hour**` : ''}.`;
+    const advice = r.action === 'keep' ? 'It is earning its place. Keep it.' : `${r.reason}${r.savingsMonthly > 0 ? ` That would save **${money(r.savingsMonthly)} a month**.` : ''}`;
+    return `**${named.sub.name}** costs **${money(named.monthlyCost)} a month**. ${use} ${advice}${note}`;
   }
 
   if (/next|upcoming|renew|forecast|will i (pay|spend)/.test(q)) {
     await call('forecast_renewals', { days: 30 });
-    const lines = portfolio.upcoming.map((u) => `${u.date}: ${u.name} ${money(u.amount)}${u.kind === 'trial_conversion' ? ' (trial converts)' : ''}`);
-    return `In the next 30 days you will be charged ${money(portfolio.next30Total)} across ${portfolio.upcoming.length} payments.\n${lines.join('\n')}${note}`;
+    const largest = Math.max(1, ...portfolio.upcoming.map((u) => u.amount));
+    if (portfolio.upcoming.length) {
+      await call('show', {
+        type: 'progress',
+        title: 'Next 30 days',
+        items: portfolio.upcoming.slice(0, 10).map((u) => ({ label: u.name, value: u.amount, max: largest, text: money(u.amount), detail: `${u.date}${u.kind === 'trial_conversion' ? ', trial converts' : ''}`, ...(u.kind === 'trial_conversion' && { tone: 'warn' }) })),
+      });
+    }
+    return `You will be charged **${money(portfolio.next30Total)}** across ${portfolio.upcoming.length} payments in the next 30 days.${note}`;
   }
   if (/price|increase|went up|raised/.test(q)) {
     await call('list_subscriptions');
@@ -272,8 +335,15 @@ async function answerFromFacts(question: string, call: (name: string, input?: Re
   if (/save|cancel|cut|waste|unused|worth/.test(q)) {
     await call('list_subscriptions');
     const cuts = portfolio.insights.filter((i) => i.recommendation.savingsMonthly > 0).sort((a, b) => b.recommendation.savingsMonthly - a.recommendation.savingsMonthly);
-    const lines = cuts.map((i) => `${i.recommendation.action} ${i.sub.name}: saves ${money(i.recommendation.savingsMonthly)}/month. ${i.recommendation.reason}`);
-    return `You could save about ${money(portfolio.potentialSavingsMonthly)}/month (${money(Math.round(portfolio.potentialSavingsMonthly * 12))}/year):\n${lines.join('\n')}\n\nRun a sweep to turn these into proposals you can approve.${note}`;
+    if (cuts.length === 0) return `Nothing stands out. Everything you pay for is earning its place right now.${note}`;
+    await call('show', {
+      type: 'checklist',
+      title: 'What you could cut',
+      prompt: 'Go ahead with',
+      confirm_label: 'Propose these',
+      items: cuts.slice(0, 8).map((i) => ({ label: `${i.recommendation.action} ${i.sub.name}`, text: `${money(i.recommendation.savingsMonthly)}/mo`, detail: i.recommendation.reason, checked: i.recommendation.confidence === 'high' })),
+    });
+    return `You could keep about **${money(portfolio.potentialSavingsMonthly)} a month**, ${money(Math.round(portfolio.potentialSavingsMonthly * 12))} a year. Tick what you want and I will prepare each one for your approval.${note}`;
   }
   await call('list_subscriptions');
   const worst = [...portfolio.insights].filter((i) => i.costPerHour !== null).sort((a, b) => (b.costPerHour ?? 0) - (a.costPerHour ?? 0))[0];

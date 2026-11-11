@@ -22,24 +22,23 @@ TanStack Start with Google Gemini.
 
 ```bash
 npm install
-cp env.example .env.local     # PayPal sandbox keys are enough to see the PayPal flow
+cp .env.example .env.local    # PayPal sandbox keys are enough to see the PayPal flow
 npm run dev                   # http://localhost:3000
 ```
 
-1. Open **Connections** and press **Open demo**. Thirteen sample subscriptions appear with a year
-   of payments and 60 days of usage. Your own data is set aside and returns when you close it.
-2. **Command center**: one number (what you could keep a year), one quick win, the inbox of
-   proposals. Press **Run audit** to watch the agent work.
-3. **Savings**: every recommendation with its reason and yearly saving.
-4. **Services**: pick a service priced in dollars, press **Start with PayPal**, approve it in the
-   inbox. Subster creates a real PayPal sandbox plan and agreement and sends you to PayPal to
-   confirm. Back in Subster the subscription is under one-tap control: pause or cancel it and the
-   agreement's new status is read back from PayPal.
-5. **Transactions**: open any payment and press **Help** for a refund request, a cancellation or a
-   failed-payment fix.
-6. **Timeline** (Bryntum) and **Analytics** (AG Studio).
+1. **Create the first account.** It becomes the administrator. Three welcome steps follow.
+2. **The guided demo opens by itself**, with thirteen sample subscriptions and a notification that
+   you are in demo mode. A walkthrough card leads through the PayPal flow, ringing what to look at
+   and ticking each step off when the app sees it done:
+   see where PayPal is accepted, start a subscription through PayPal, approve it (a real sandbox
+   plan and agreement are created and PayPal asks you to confirm), pause or cancel in one tap with
+   the result read back from PayPal, and read the PayPal ledger.
+3. **End the demo** from the walkthrough. You land on your own, empty data, on the Connect page,
+   ready to link PayPal, a bank, a statement, UPI IDs and the browser extension.
+4. Along the way: **Assistant** (ask anything, or run an audit; it answers with checklists,
+   pickers and approval cards), **Savings**, **Timeline** (Bryntum) and **Insights** (AG Studio).
 
-Without any keys the app still runs on the demo data, with the built-in rules in place of the
+Without any keys the app still runs on the sample data, with the built-in rules in place of the
 model and PayPal shown as not connected.
 
 ## How PayPal is used
@@ -96,6 +95,60 @@ PayPal's create, cancel, suspend or activate is in `src/server/services/actions.
 the approval endpoint or from a standing permission the user gave for one subscription. That
 boundary is in the server, not in a prompt.
 
+## The assistant and its API
+
+The Assistant page is a conversation with the agent. Replies are markdown, and the agent can show
+components in place of text: a checklist, a plan picker, a confirm dialog, progress bars, headline
+numbers, subscription rows, a table, and approval cards that carry the PayPal buttons.
+
+Conversations are kept on the server. A client sends only the new message; the agent is given the
+conversation so far, including what it showed, from the server's own record.
+
+| Call | What it does |
+| --- | --- |
+| `GET /api/chat/sessions` | List conversations |
+| `POST /api/chat/sessions` | Start one |
+| `GET`, `PATCH`, `DELETE /api/chat/sessions/{id}` | Read with full history, rename, delete |
+| `POST /api/chat/sessions/{id}/messages` | Send a message; the reply streams as NDJSON |
+| `POST /api/actions/{id}` | Approve or decline a proposal |
+
+The contract is in `openapi/subster-chat.yaml` (OpenAPI 3.0). Import it into APIMatic to generate
+SDKs and a developer portal for it.
+
+## Accounts and administration
+
+- Each person has their own account and their own data, kept apart on disk. Passwords are stored
+  as salted scrypt hashes and sessions as hashes of their tokens, in an HttpOnly cookie.
+- The first account is the administrator (or name one with `ADMIN_EMAIL` and `ADMIN_PASSWORD`).
+  The **Admin** page lists accounts, opens or closes sign-ups, adds people, changes roles,
+  suspends or deletes an account, and switches three permissions per person: the assistant,
+  PayPal actions, and linking accounts. It also shows the server logs, live.
+- An administrator sees who has an account and how much it holds, not anyone's subscriptions.
+- The browser extension and the phone app report usage with a per-account **device key**, shown
+  on the Connect page. It opens nothing else.
+- Background work (the daily audit, connection checks, price reading) runs for every account, and
+  a PayPal webhook is handed to whichever account holds that agreement.
+
+## Deploying
+
+The app is one Node server that keeps accounts and data as files, so it needs a disk that lasts.
+
+```bash
+docker compose up --build        # http://localhost:3000, data in a named volume
+# or
+docker build -t subster . && docker run -p 3000:3000 -v subster-data:/data --env-file .env subster
+```
+
+The image runs as an unprivileged user, has a health check, and reads its keys from the
+environment. Any host that runs a container with a volume works (Render, Railway, Fly.io, a VM).
+Set `PUBLIC_URL` to the public https address so PayPal can return to it.
+
+**Vercel.** The project builds and runs there with no configuration, but Vercel functions have no
+lasting disk: accounts and data are lost whenever a function restarts, the live event stream and
+the background monitors do not run between requests, and the app says so on the sign-in screen.
+It is fine for a look, not for real use. Real use on a serverless host needs the store adapter in
+`src/server/store` backed by a database.
+
 ## Sponsor technology
 
 - **PayPal**: see the table above.
@@ -116,7 +169,10 @@ Run and checked:
 - The agent loop on Gemini, the fit check with live lookups, the daily audit, decline memory.
 - Direct reading of price pages (Netflix, Spotify, Apple Music, iCloud+, Google One, Claude) and of
   JustWatch title pages.
-- The Chrome extension, loaded in Chrome: it synced and reported a site as in use within seconds.
+- The Chrome extension, loaded in Chrome: it synced and reported a site as in use within seconds
+  (before device keys were added; the key path is covered by the end-to-end test, not in Chrome).
+- Accounts, permissions, onboarding, the demo and its ending: 41 end-to-end checks, run against
+  the dev server and against the built container.
 
 Written but not run against the real service:
 - Plaid, the Setu Account Aggregator connector and Spotify sign-in. No keys were available.
@@ -128,7 +184,9 @@ Written but not run against the real service:
 
 ## Limits
 
-- **No sign-in.** The app is single-user and holds financial data. Do not expose it publicly.
+- **Storage is files.** One JSON document per account, on one node. It suits a small deployment;
+  a larger one needs the store adapter backed by a database.
+- **No password reset by email.** An administrator sets a new password for someone.
 - **PayPal bills subscriptions in US dollars here**, so only dollar-priced plans can be started
   from Subster. Everything else works in the user's own currency, never converted.
 - **Indian bank accounts.** Plaid does not cover India and production Account Aggregator access is
@@ -151,9 +209,10 @@ Written but not run against the real service:
 npm run dev          # the app
 npm run build && npm start
 npm run typecheck && npm run lint
-npm test             # statement parser tests
+npm test             # statement parser
 npm run test:extension
-npm run smoke        # end to end against the dev server. Open the demo first: it erases the open data set.
+npm run test:e2e     # the whole path over HTTP: BASE=http://localhost:3100, against an empty data folder
+npm run smoke        # older single-user checks: start the server with SUBSTER_SINGLE_USER=1
 npm run gateway      # forwards only webhook and callback paths, for use behind a tunnel
 npm run tunnel       # public https address for the gateway
 ```
@@ -165,15 +224,20 @@ dashboard and set `PAYPAL_WEBHOOK_ID` and `PUBLIC_URL`.
 
 ```
 src/
-  domain/          pure logic shared by server and browser: data model, catalog, scoring
+  domain/          pure logic shared by server and browser: data model, catalog, scoring, UPI
   server/
+    auth.ts        accounts, sessions, roles and permissions
+    http.ts        the one wrapper every API route goes through: who is calling, what they may do
     integrations/  one module per outside system (paypal.ts, bank/)
-    services/      use cases: actions (the permission boundary), connections, refunds, plans, scrape
+    services/      use cases: actions (the permission boundary), chat, connections, refunds, plans
     agent/         tools, the audit loop, the fit check, the daily schedule
-    store/         persistence behind an adapter (one JSON document today), demo data
+    store/         one document per account behind an adapter, and the sample data
   routes/          pages, and server routes under routes/api
-  components/      UI, including timeline (Bryntum) and studio/ (AG Studio)
+  components/      UI: chat, walkthrough, notifications, timeline (Bryntum), studio/ (AG Studio)
 extension/         Chrome extension: live usage and sign-in monitoring
 android/           companion app: screen time
-scripts/           smoke test, parser and extension tests
+openapi/           the assistant API contract
+tests/             parser, extension, end-to-end and smoke tests
+scripts/           build helpers and the webhook gateway
+Dockerfile, docker-compose.yml
 ```

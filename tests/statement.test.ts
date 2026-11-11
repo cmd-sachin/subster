@@ -1,5 +1,5 @@
 // Plain test script for the statement parser. Run with:
-//   node --experimental-strip-types scripts/statement_test.ts
+//   node --experimental-strip-types tests/statement.test.ts
 // The module is loaded with a dynamic import so the .ts extension Node needs does not
 // trip the project's type-check settings.
 

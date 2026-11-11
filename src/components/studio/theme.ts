@@ -1,13 +1,13 @@
-// AG Studio theme for the Analytics page, in the app palette (see styles/app.css): #02030c
-// canvas, flat dark cards, lime as the accent and first series, blue as the second.
+// AG Studio theme for the Analytics page, in the app palette (see styles/app.css): light
+// page, white cards, ink as the accent, the logo's blue as the first series.
 
 import { studioTheme } from 'ag-studio';
 
 const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
-const LINE = 'rgba(255, 255, 255, 0.09)';
+const LINE = 'rgba(10, 30, 80, 0.08)';
 const line = { width: 1, color: LINE };
 
-const SERIES = ['#fed106', '#0473fd', '#6aa8ff', '#34d399', '#ff9f43', '#c9d1dc', '#e05cff', '#ff6b6b', '#fdb10e', '#5d6b82'];
+const SERIES = ['#0473fd', '#fdb10e', '#6aa8ff', '#0c9a68', '#ff9f43', '#b9bdd0', '#e05cff', '#ff6b6b', '#fdb10e', '#5d6b82'];
 const palette = Object.fromEntries(
   SERIES.flatMap((color, i) => [
     [`chartPaletteFills${i + 1}Color`, color],
@@ -18,69 +18,69 @@ const palette = Object.fromEntries(
 export const substerStudioTheme = studioTheme.withParams({
   fontFamily: FONT,
   fontSize: 14,
-  textColor: '#f5f7fb',
-  foregroundColor: '#f5f7fb',
-  subtleTextColor: '#a3abbd',
-  backgroundColor: '#080b18',
+  textColor: '#0a1633',
+  foregroundColor: '#0a1633',
+  subtleTextColor: '#55607a',
+  backgroundColor: '#ffffff',
   borderColor: LINE,
-  accentColor: '#fed106',
-  iconColor: '#a3abbd',
-  rowHoverColor: 'rgba(255, 255, 255, 0.06)',
+  accentColor: '#0473fd',
+  iconColor: '#55607a',
+  rowHoverColor: 'rgba(10, 30, 80, 0.04)',
 
   studioWrapperBorder: false,
   studioWrapperBorderRadius: 0,
   studioWrapperSpacing: 0,
-  studioWrapperBackgroundColor: '#02030c',
+  studioWrapperBackgroundColor: 'transparent',
   studioCanvasBorder: false,
   studioCanvasBorderRadius: 0,
   studioCanvasShadow: false,
-  studioCanvasBackgroundColor: '#02030c',
+  studioCanvasBackgroundColor: 'transparent',
   studioCanvasPadding: 20,
   studioCanvasRowHeight: 18,
   studioCanvasFontFamily: FONT,
 
-  studioWidgetBackgroundColor: '#080b18',
+  studioWidgetBackgroundColor: '#ffffff',
   studioWidgetBorder: false,
   studioWidgetBorderRadius: 16,
   studioWidgetPadding: 14,
   studioWidgetTitleFontFamily: FONT,
   studioWidgetTitleFontSize: 17,
   studioWidgetTitleFontWeight: 700,
-  studioWidgetTitleTextColor: '#f5f7fb',
+  studioWidgetTitleTextColor: '#0a1633',
   studioWidgetSubtitleFontFamily: FONT,
-  studioWidgetSubtitleTextColor: '#a3abbd',
+  studioWidgetSubtitleTextColor: '#55607a',
   studioWidgetCaptionFontFamily: FONT,
-  studioWidgetCaptionTextColor: '#a3abbd',
-  studioWidgetResizeBorderColor: '#fed106',
+  studioWidgetCaptionTextColor: '#55607a',
+  studioWidgetResizeBorderColor: '#0473fd',
 
-  studioPanelContainerBackgroundColor: '#080b18',
+  studioPanelContainerBackgroundColor: '#ffffff',
   studioPanelContainerBorder: line,
   studioPanelContainerBorderRadius: 0,
   studioPanelDividerColor: LINE,
-  studioPanelDividerActiveColor: '#fed106',
+  studioPanelDividerActiveColor: '#0473fd',
   studioPanelSectionBorderColor: LINE,
   studioPanelHeaderFontFamily: FONT,
   studioPanelHeaderFontWeight: 700,
-  studioToggleButtonActiveBackgroundColor: 'rgba(254, 209, 6, 0.14)',
-  studioToggleButtonActiveBorderColor: '#fed106',
-  studioToggleButtonActiveColor: '#fed106',
+  studioToggleButtonActiveBackgroundColor: 'rgba(4, 115, 253, 0.09)',
+  studioToggleButtonActiveBorderColor: '#0473fd',
+  studioToggleButtonActiveColor: '#0473fd',
 
   gridFontFamily: FONT,
   gridFontSize: 13,
-  gridCellTextColor: '#f5f7fb',
+  gridCellTextColor: '#0a1633',
   gridHeaderBackgroundColor: 'transparent',
-  gridHeaderTextColor: '#a3abbd',
+  gridHeaderTextColor: '#55607a',
   gridHeaderFontWeight: 600,
   gridRowHeight: 40,
   gridRowBorder: line,
   gridHeaderRowBorder: line,
-  gridRowHoverColor: 'rgba(255, 255, 255, 0.06)',
+  gridRowHoverColor: 'rgba(10, 30, 80, 0.04)',
   gridWrapperBorder: false,
 
   chartFontFamily: FONT,
-  chartTextColor: '#f5f7fb',
-  chartSubtleTextColor: '#a3abbd',
-  chartAxisLineColor: 'rgba(255, 255, 255, 0.14)',
-  chartGridLineColor: 'rgba(255, 255, 255, 0.07)',
+  chartTextColor: '#0a1633',
+  chartSubtleTextColor: '#55607a',
+  chartAxisLineColor: 'rgba(10, 30, 80, 0.16)',
+  chartGridLineColor: 'rgba(10, 30, 80, 0.07)',
   ...palette,
 });

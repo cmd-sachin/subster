@@ -8,9 +8,10 @@ import { createProposal, proposeSubscription } from '@/server/services/actions';
 import { log } from '@/server/logger';
 import { addDays, currentCurrency, diffDays, money, today } from '@/domain/dates';
 import { analyze } from '@/domain/intelligence';
+import { maskUpi } from '@/domain/upi';
 import { getSubscriptionStatus, paypalMode } from '@/server/integrations/paypal';
 import { db, save, uid } from '@/server/store';
-import type { ActionType, Insight } from '@/domain/types';
+import type { ActionType, Insight, Widget, WidgetItem } from '@/domain/types';
 
 /** A tool as the model sees it: a name, what it is for, and a JSON Schema for its arguments. */
 export interface ToolDef {
@@ -101,6 +102,47 @@ export const TOOL_DEFS: ToolDef[] = [
     },
   },
   {
+    name: 'show',
+    description:
+      'Show a component under your reply instead of writing the same thing as text. Types: "progress" (bars: each item has label, value, max, text), "stats" (two to four big numbers: label, text), "subscriptions" (rows drawn from live data: each item has subscription_id), "table" (columns and rows, for comparing plans or alternatives), "choices" (the user picks one: each item has label and optionally send, the message their pick sends back to you), "checklist" (the user ticks several and confirms: items have label, optionally detail, text, checked; prompt is the instruction their selection is sent back with), "confirm" (a dialog asking yes or no before you do something: title, note, confirm_label, prompt is the message a yes sends back). After choices, checklist or confirm, stop and wait: the answer arrives as the user\'s next message.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['progress', 'stats', 'choices', 'checklist', 'confirm', 'subscriptions', 'table'] },
+        title: { type: 'string', description: 'Short heading, a few words' },
+        note: { type: 'string', description: 'One short line under the component, or the body of a confirm dialog' },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              value: { type: 'number' },
+              max: { type: 'number' },
+              text: { type: 'string', description: 'The value as the user reads it, with its unit or currency' },
+              detail: { type: 'string', description: 'A few words of supporting detail' },
+              tone: { type: 'string', enum: ['good', 'warn', 'bad'] },
+              subscription_id: { type: 'string' },
+              send: { type: 'string' },
+              checked: { type: 'boolean' },
+            },
+          },
+        },
+        columns: { type: 'array', items: { type: 'string' } },
+        rows: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+        confirm_label: { type: 'string' },
+        prompt: { type: 'string' },
+      },
+      required: ['type'],
+    },
+  },
+  {
+    name: 'get_account_context',
+    description:
+      'What Subster is connected to and what it does and does not know about the user: PayPal connection, linked bank, linked service accounts, usage sources, and whether sample data is open. Call it before answering any question about accounts, payment methods, privacy, or "how do you know".',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
     name: 'propose_subscription',
     description:
       'Put a proposal to START a new subscription in the user\'s approval inbox. Nothing is bought by this call. When the user approves, a PayPal billing agreement is created and the user confirms it at PayPal; only then is the subscription active. Use when the user asks to subscribe to, sign up for, or start an app.',
@@ -152,6 +194,10 @@ export interface ToolOutcome {
   summary: string;
   isError?: boolean;
   proposed?: boolean;
+  /** The proposal this call created or found. */
+  actionId?: string;
+  /** A component to draw under the reply. */
+  widget?: Widget;
 }
 
 export async function runTool(name: string, input: Record<string, unknown>, runId: string): Promise<ToolOutcome> {
@@ -230,6 +276,7 @@ export async function runTool(name: string, input: Record<string, unknown>, runI
               ? `${action.title}: already waiting for your approval`
               : `${action.title}: sent to your inbox (${action.savingsMonthly > 0 ? `saves ${money(action.savingsMonthly)}/month, ` : ''}decide by ${action.deadline})`,
         proposed: outcome !== 'already_pending',
+        actionId: action.id,
       };
     }
 
@@ -285,9 +332,77 @@ export async function runTool(name: string, input: Record<string, unknown>, runI
       if (!proposal.ok) return { result: { error: proposal.error }, summary: proposal.error, isError: true };
       const { action, outcome } = proposal;
       return {
-        result: { action_id: action.id, outcome, title: action.title, plan: action.plan, paypal_mode: paypalMode(), next_step: 'The user approves in the inbox, then confirms the agreement at PayPal.' },
+        result: {
+          action_id: action.id,
+          outcome,
+          title: action.title,
+          plan: action.plan,
+          paypal_mode: paypalMode(),
+          billed_by: 'Subster, through a PayPal agreement in US dollars. This does not open an account at the provider.',
+          paid_from: 'Whichever PayPal account the user signs in to at PayPal when they confirm. Subster does not know it in advance.',
+          next_step: 'An approval card is shown to the user under your reply. They approve there, then confirm the agreement at PayPal.',
+        },
         summary: outcome === 'already_pending' ? `${action.title}: already waiting for your approval` : `${action.title}: sent to your inbox (${money(action.plan!.price, 'USD')} per ${action.plan!.cycle.replace('ly', '')}, nothing is charged until you approve)`,
         proposed: outcome !== 'already_pending',
+        actionId: action.id,
+      };
+    }
+
+    case 'get_account_context': {
+      const usageDays = new Set(data.usage.map((u) => u.date)).size;
+      return {
+        result: {
+          currency: currentCurrency(),
+          paypal: {
+            connection: paypalMode() === 'off' ? 'not connected' : paypalMode(),
+            what_subster_knows: 'Only the agreements started through Subster and the payments PayPal reports for them. Subster never sees the PayPal password, and it does not know which PayPal account a new agreement will be paid from until the user signs in at PayPal and confirms.',
+            agreements_managed_here: data.subscriptions.filter((s) => s.paypalSubscriptionId).map((s) => ({ name: s.name, status: s.status })),
+          },
+          bank: data.bank ? { institution: data.bank.institution, account_ending: data.bank.accountMask, last_read: data.bank.lastSyncAt } : 'not linked',
+          upi: (data.upiIds ?? []).length ? { linked: (data.upiIds ?? []).map((u) => maskUpi(u.vpa)), what_it_is_for: 'Recognising UPI and AutoPay payments, and pointing the user to their UPI app to manage a mandate. Subster cannot change a mandate over UPI.' } : 'no UPI ID linked',
+          payments_on_record: data.charges.length + data.bankTransactions.length,
+          linked_service_accounts: data.accounts.map((a) => ({ service: a.providerId, shown_as: a.displayName, how: a.method })),
+          usage: usageDays ? `${usageDays} days of usage totals from the browser extension or the phone app` : 'no usage reported yet',
+          never_held: 'Provider passwords, card numbers, PayPal sign-in details.',
+          sample_data: data.demo === true,
+        },
+        summary: `PayPal ${paypalMode() === 'off' ? 'not connected' : paypalMode()}, bank ${data.bank ? 'linked' : 'not linked'}${data.demo ? ', sample data open' : ''}`,
+      };
+    }
+
+    case 'show': {
+      const types: Widget['type'][] = ['progress', 'stats', 'choices', 'checklist', 'confirm', 'subscriptions', 'table'];
+      const type = types.find((x) => x === input.type);
+      if (!type) return { result: { error: `type must be one of ${types.join(', ')}` }, summary: 'Nothing to show', isError: true };
+      const str = (v: unknown, max = 140) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+      const items: WidgetItem[] = (Array.isArray(input.items) ? (input.items as Record<string, unknown>[]) : [])
+        .slice(0, 12)
+        .map((raw) => {
+          const sub = find(raw.subscription_id)?.sub;
+          return {
+            label: str(raw.label, 80) ?? sub?.name ?? '',
+            value: Number.isFinite(Number(raw.value)) && raw.value !== undefined ? Number(raw.value) : undefined,
+            max: Number(raw.max) > 0 ? Number(raw.max) : undefined,
+            text: str(raw.text, 40),
+            detail: str(raw.detail),
+            tone: (['good', 'warn', 'bad'] as const).find((x) => x === raw.tone),
+            subscriptionId: sub?.id,
+            send: str(raw.send, 200),
+            checked: raw.checked === true,
+          };
+        })
+        .filter((item) => item.label);
+      const columns = Array.isArray(input.columns) ? input.columns.slice(0, 5).map((c) => String(c).slice(0, 40)) : undefined;
+      const rows = Array.isArray(input.rows) ? (input.rows as unknown[]).slice(0, 10).filter(Array.isArray).map((r) => (r as unknown[]).slice(0, 5).map((c) => String(c).slice(0, 80))) : undefined;
+      if (type === 'table' ? !columns?.length || !rows?.length : type !== 'confirm' && items.length === 0)
+        return { result: { error: type === 'table' ? 'A table needs columns and rows.' : 'Give at least one item.' }, summary: 'Nothing to show', isError: true };
+      if (type === 'subscriptions' && items.some((i) => !i.subscriptionId)) return { result: { error: 'Every item needs a subscription_id from list_subscriptions.' }, summary: 'Nothing to show', isError: true };
+      const widget: Widget = { type, title: str(input.title, 80), note: str(input.note, 240), items, columns, rows, confirmLabel: str(input.confirm_label, 30), prompt: str(input.prompt, 200) };
+      const waits = type === 'choices' || type === 'checklist' || type === 'confirm';
+      return {
+        result: { shown: true, next: waits ? 'The user sees it under your reply. End your turn with one short sentence and wait for their answer.' : 'The user sees it under your reply. Do not repeat its contents in text.' },
+        summary: widget.title ?? 'Shown below',
+        widget,
       };
     }
 

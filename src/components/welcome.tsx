@@ -67,35 +67,35 @@ export function Welcome({ state }: { state: AppState }) {
 
   return (
     <section className="grid gap-4 lg:grid-cols-12" aria-label="Where you stand">
-      <div className="brand-blue relative overflow-hidden rounded-[28px] p-7 text-white lg:col-span-8">
+      <div className="brand-blue relative overflow-hidden rounded-[28px] p-7 text-on lg:col-span-8">
         <img src="/logo-mark.png" alt="" aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 h-52 w-52 rotate-6 opacity-[0.13]" />
         {possibleYear > 0 ? (
           <>
-            <p className="text-[14px] font-medium text-white/80">You could keep</p>
+            <p className="text-[14px] font-medium text-on/80">You could keep</p>
             <p className="num mt-1 text-[56px] font-semibold leading-none tracking-[-0.035em]">{money(possibleYear)}</p>
-            <p className="mt-2 text-[15px] text-white/85">
+            <p className="mt-2 text-[15px] text-on/85">
               a year, with {changes} small change{changes === 1 ? '' : 's'}
             </p>
           </>
         ) : (
           <>
-            <p className="text-[14px] font-medium text-white/80">{scored.length > 0 ? 'You are all set' : 'Almost there'}</p>
+            <p className="text-[14px] font-medium text-on/80">{scored.length > 0 ? 'You are all set' : 'Almost there'}</p>
             <p className="mt-1 max-w-md text-[34px] font-semibold leading-tight tracking-[-0.03em]">{scored.length > 0 ? `${earning} of ${scored.length} are earning their place` : 'Usage will tell us what is worth it'}</p>
           </>
         )}
 
         {goal > 0 && (
           <div className="mt-6 max-w-md">
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/20" role="img" aria-label={`${money(savedYear)} of ${money(goal)} a year saved`}>
+            <div className="h-1.5 overflow-hidden rounded-full bg-on/20" role="img" aria-label={`${money(savedYear)} of ${money(goal)} a year saved`}>
               <div className="h-full rounded-full bg-sun transition-[width] duration-700" style={{ width: `${Math.max(6, Math.min(100, (savedYear / goal) * 100))}%` }} />
             </div>
-            <p className="num mt-2 text-[13px] text-white/75">{savedYear === 0 ? 'Nothing claimed yet. The first one is the hardest.' : `${money(savedYear)} of ${money(goal)} claimed`}</p>
+            <p className="num mt-2 text-[13px] text-on/75">{savedYear === 0 ? 'Nothing claimed yet. The first one is the hardest.' : `${money(savedYear)} of ${money(goal)} claimed`}</p>
           </div>
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {possibleYear > 0 && (
-            <Link to="/savings" className="rounded-full bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0035c5] transition-transform hover:scale-[1.02]">
+            <Link to="/savings" className="rounded-full bg-on px-5 py-2.5 text-[14px] font-semibold text-[#0035c5] transition-transform hover:scale-[1.02]">
               Review savings
             </Link>
           )}

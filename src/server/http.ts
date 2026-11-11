@@ -3,7 +3,10 @@
 // crashed handler. Route files stay thin: parse, call a service, respond.
 
 import './env';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { accountFor, AuthError, singleUser, type Account, type Permission } from './auth';
 import { log, requestContext } from './logger';
+import { LOCAL_USER } from './store';
 
 export interface RouteContext {
   request: Request;
@@ -30,28 +33,67 @@ export async function body<T>(request: Request): Promise<Partial<T>> {
   return ((await request.json().catch(() => ({}))) ?? {}) as Partial<T>;
 }
 
-export function handle(name: string, handler: Handler, options: { quiet?: boolean } = {}) {
+export interface RouteOptions {
+  quiet?: boolean;
+  /**
+   * Who may call the route. "user" (the default) needs a signed-in account; "admin" an
+   * administrator; "device" also accepts a device key, for the browser extension and the phone
+   * app; "public" needs nothing, for sign-in itself and for webhooks that verify themselves.
+   */
+  access?: 'public' | 'user' | 'admin' | 'device';
+  /** A permission the account must hold. Administrators switch these per account. */
+  needs?: Permission;
+}
+
+const DENIED: Record<Permission, string> = {
+  assistant: 'The assistant is switched off for your account. Ask the administrator.',
+  paypal: 'PayPal actions are switched off for your account. Ask the administrator.',
+  connect: 'Linking accounts is switched off for your account. Ask the administrator.',
+};
+
+/** The account behind the current request. Routes marked "public" may not have one. */
+export const currentAccount = () => accountContext.getStore();
+const accountContext = new AsyncLocalStorage<Account | undefined>();
+
+/** Stops the request unless the account holds a permission. For checks that depend on the body. */
+export function requirePermission(permission: Permission) {
+  const account = currentAccount();
+  if (account && account.role !== 'admin' && !account.permissions[permission]) throw new HttpError(403, DENIED[permission]);
+}
+
+export function handle(name: string, handler: Handler, options: RouteOptions = {}) {
   return async (ctx: { request: Request; params?: Record<string, string> }): Promise<Response> => {
     const requestId = Math.random().toString(36).slice(2, 10);
     const started = performance.now();
     const url = new URL(ctx.request.url);
-    return requestContext.run({ requestId }, async () => {
-      let response: Response;
-      try {
-        response = await handler({ request: ctx.request, params: ctx.params ?? {} });
-      } catch (error) {
-        if (error instanceof HttpError) {
-          response = fail(error.status, error.message);
-        } else {
-          log.error('http', `${name} threw`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack?.split('\n').slice(0, 6).join('\n') : undefined });
-          response = fail(500, 'Something went wrong on the server. The error has been logged.');
+    const access = options.access ?? 'user';
+    const account = singleUser() ? undefined : accountFor(ctx.request, access === 'device');
+    const userId = singleUser() ? LOCAL_USER : account?.id;
+    return requestContext.run({ requestId, userId }, () =>
+      accountContext.run(account, async () => {
+        let response: Response;
+        try {
+          if (!singleUser() && access !== 'public') {
+            if (!account) throw new HttpError(401, 'Sign in to continue.');
+            if (account.status === 'suspended') throw new HttpError(403, 'This account is suspended.');
+            if (access === 'admin' && account.role !== 'admin') throw new HttpError(403, 'Only an administrator can do that.');
+            if (options.needs) requirePermission(options.needs);
+          }
+          response = await handler({ request: ctx.request, params: ctx.params ?? {} });
+        } catch (error) {
+          if (error instanceof HttpError || error instanceof AuthError) {
+            response = fail(error.status, error.message);
+          } else {
+            log.error('http', `${name} threw`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack?.split('\n').slice(0, 6).join('\n') : undefined });
+            response = fail(500, 'Something went wrong on the server. The error has been logged.');
+          }
         }
-      }
-      const ms = Math.round(performance.now() - started);
-      // Polling-style reads are logged at debug so they do not drown out real activity.
-      const level = response.status >= 500 ? 'error' : response.status >= 400 ? 'warn' : options.quiet ? 'debug' : 'info';
-      log[level]('http', `${ctx.request.method} ${url.pathname} ${response.status}`, { route: name, ms });
-      return response;
-    });
+        const ms = Math.round(performance.now() - started);
+        // Polling-style reads are logged at debug so they do not drown out real activity.
+        const level = response.status >= 500 ? 'error' : response.status >= 400 && response.status !== 401 ? 'warn' : options.quiet || response.status === 401 ? 'debug' : 'info';
+        log[level]('http', `${ctx.request.method} ${url.pathname} ${response.status}`, { route: name, ms });
+        return response;
+      }),
+    );
   };
 }

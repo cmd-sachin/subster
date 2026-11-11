@@ -48,8 +48,8 @@ async function GET() {
 export const Route = createFileRoute('/api/usage')({
   server: {
     handlers: {
-      POST: handle('usage', POST),
-      GET: handle('usage', GET, { quiet: true }),
+      POST: handle('usage', POST, { access: 'device' }),
+      GET: handle('usage', GET, { quiet: true, access: 'device' }),
     },
   },
 });

@@ -94,7 +94,7 @@ export function ValueBoard({ widgetApi, dataMapping }: AgWidgetParams) {
               <span>{verdict(row.score, row.hours)}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{row.score ?? ''}</span>
             </span>
-            <span style={{ display: 'block', height: 3, marginTop: 5, borderRadius: 2, background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: 3, marginTop: 5, borderRadius: 2, background: 'rgba(24,22,48,0.1)', overflow: 'hidden' }}>
               <span style={{ display: 'block', height: '100%', width: `${row.score ?? 0}%`, background: tone(row.score) }} />
             </span>
           </span>

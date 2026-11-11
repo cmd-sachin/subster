@@ -8,5 +8,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/bank/link-token')({
-  server: { handlers: { POST: handle('bank.link-token', POST) } },
+  server: { handlers: { POST: handle('bank.link-token', POST, { needs: 'connect' }) } },
 });

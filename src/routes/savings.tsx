@@ -80,7 +80,7 @@ function Savings() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-4 px-4 py-6 md:px-8">
+    <div className="space-y-4 px-4 py-6 md:px-8">
       <header>
         <p className="eyebrow">Recommendations</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]">Savings</h1>
@@ -149,7 +149,7 @@ function Savings() {
                   <div className="mt-3 flex flex-wrap items-center gap-2 pl-[52px]">
                     {waiting?.status === 'guided' ? (
                       <>
-                        <a href={i.sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+                        <a href={i.sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90">
                           Finish at {i.sub.name} <ExternalLink size={13} aria-hidden="true" />
                         </a>
                         <button
@@ -172,7 +172,7 @@ function Savings() {
                     ) : i.sub.policy === 'locked' ? (
                       <span className="text-[12px] text-faint">You locked this subscription, so nothing is changed from here.</span>
                     ) : (
-                      <button onClick={() => act(i, move)} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                      <button onClick={() => act(i, move)} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90 disabled:opacity-50">
                         {busy === i.sub.id ? 'Working' : i.sub.paypalSubscriptionId && state.integrations.paypal !== 'off' && move !== 'downgrade' ? `${VERB[move]} with PayPal` : `${VERB[move]} it`}
                       </button>
                     )}

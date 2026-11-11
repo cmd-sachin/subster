@@ -11,6 +11,7 @@
 // This needs a Gemini API key. Without one nothing is fetched and the UI shows the built-in
 // catalog prices, labelled as not live.
 
+import { eachUser } from '@/server/users';
 import { ApiError } from '@google/genai';
 import { providerById, REGION, type Provider } from '@/domain/catalog';
 import type { BillingCycle, Currency, LivePlan, LivePlans } from '@/domain/types';
@@ -230,7 +231,7 @@ const timers = globalThis as unknown as { __substerPlanMonitor?: ReturnType<type
 /** Starts the background monitor once per process. */
 export function startPlanMonitor() {
   if (timers.__substerPlanMonitor) return;
-  timers.__substerPlanMonitor = setInterval(() => void monitorOnce(), MONITOR_EVERY_MS);
+  timers.__substerPlanMonitor = setInterval(() => void eachUser(() => monitorOnce()), MONITOR_EVERY_MS);
   timers.__substerPlanMonitor.unref?.();
-  setTimeout(() => void monitorOnce(), 30_000).unref?.();
+  setTimeout(() => void eachUser(() => monitorOnce()), 30_000).unref?.();
 }

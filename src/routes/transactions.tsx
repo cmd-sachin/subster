@@ -91,7 +91,7 @@ function Transactions() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1360px] space-y-4 px-4 py-6 md:px-8">
+    <div className="space-y-4 px-4 py-6 md:px-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Payments, refunds and cancellations</p>
@@ -101,7 +101,7 @@ function Transactions() {
           <button onClick={exportCsv} disabled={visible.length === 0} className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[13px] font-medium hover:bg-white/[0.07] disabled:opacity-40">
             <Download size={14} aria-hidden="true" /> Export CSV
           </button>
-          <button onClick={() => setRecording(true)} disabled={subs.size === 0} className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
+          <button onClick={() => setRecording(true)} disabled={subs.size === 0} className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-on hover:opacity-90 disabled:opacity-40">
             <Plus size={15} strokeWidth={2.5} aria-hidden="true" /> Record a payment
           </button>
         </div>
@@ -437,8 +437,8 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
   const manual = !charge.paypalTransactionId;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <aside role="dialog" aria-modal="true" aria-label="Payment help" onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[480px] flex-col overflow-y-auto border-l border-white/10 bg-[#060916]">
+    <div className="fixed inset-0 z-40 flex justify-end bg-scrim backdrop-blur-sm" onClick={onClose}>
+      <aside role="dialog" aria-modal="true" aria-label="Payment help" onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[480px] flex-col overflow-y-auto border-l border-white/10 bg-surface">
         <header className="flex items-start gap-3.5 border-b border-white/[0.06] p-5">
           <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#0473fd'} size={48} />
           <div className="min-w-0 flex-1">
@@ -476,7 +476,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                 want it.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+                <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90">
                   Update payment at {sub.name} <ExternalLink size={13} aria-hidden="true" />
                 </a>
                 <Quiet busy={busy === 'paid'} onClick={() => run('paid', { intent: 'mark', chargeId: charge.id, status: 'paid' }, 'Marked as paid.')}>
@@ -518,7 +518,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                       <span className="mb-1 block text-[11px] text-faint">Anything to add (optional)</span>
                       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={600} className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[13px]" />
                     </label>
-                    <button type="submit" disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                    <button type="submit" disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90 disabled:opacity-50">
                       {busy === 'refund' ? 'Writing' : 'Write the refund request'}
                     </button>
                   </form>
@@ -570,13 +570,13 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                       </p>
                       <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
                         {refund.status === 'drafted' && (
-                          <button onClick={() => run('sent', { intent: 'refund_status', refundId: refund.id, status: 'sent' }, 'Noted as sent.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                          <button onClick={() => run('sent', { intent: 'refund_status', refundId: refund.id, status: 'sent' }, 'Noted as sent.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-on hover:opacity-90 disabled:opacity-50">
                             I have sent it
                           </button>
                         )}
                         {refund.status === 'sent' && (
                           <>
-                            <button onClick={() => run('got', { intent: 'refund_status', refundId: refund.id, status: 'refunded' }, 'Recorded. This payment now shows as refunded.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                            <button onClick={() => run('got', { intent: 'refund_status', refundId: refund.id, status: 'refunded' }, 'Recorded. This payment now shows as refunded.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-on hover:opacity-90 disabled:opacity-50">
                               The refund arrived
                             </button>
                             <Quiet busy={busy === 'declined'} onClick={() => run('declined', { intent: 'refund_status', refundId: refund.id, status: 'declined' }, 'Recorded as declined.')}>
@@ -604,7 +604,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                     <span className="font-medium">{guided.title}:</span> one step is left for you. {sub.paypalSubscriptionId ? 'PayPal could not do this one for you.' : `${sub.name} is not billed through PayPal, so it has to be done on its own site.`}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+                    <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90">
                       Open {sub.name} account page <ExternalLink size={13} aria-hidden="true" />
                     </a>
                     <Quiet
@@ -695,7 +695,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-4 backdrop-blur-sm" onClick={onClose}>
       <form
         role="dialog"
         aria-modal="true"
@@ -709,7 +709,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
           if (res.ok) onClose();
           else setError(res.error ?? 'Something went wrong');
         }}
-        className="rise w-full max-w-[400px] space-y-4 rounded-2xl border border-white/10 bg-[#060916] p-5"
+        className="rise w-full max-w-[400px] space-y-4 rounded-2xl border border-white/10 bg-surface p-5"
       >
         <h2 className="text-[16px] font-semibold">Record a payment</h2>
         <p className="text-[13px] leading-relaxed text-muted">For a charge your bank or PayPal did not report. It joins the history like any other payment.</p>
@@ -749,7 +749,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
           <button type="button" onClick={onClose} className="rounded-lg border border-white/10 px-3 py-2 text-[13px] hover:bg-white/[0.07]">
             Close
           </button>
-          <button type="submit" disabled={busy} className="rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={busy} className="rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-on hover:opacity-90 disabled:opacity-50">
             {busy ? 'Saving' : 'Record payment'}
           </button>
         </div>

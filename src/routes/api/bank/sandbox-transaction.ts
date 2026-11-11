@@ -12,5 +12,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/bank/sandbox-transaction')({
-  server: { handlers: { POST: handle('bank.sandbox-transaction', POST) } },
+  server: { handlers: { POST: handle('bank.sandbox-transaction', POST, { needs: 'connect' }) } },
 });

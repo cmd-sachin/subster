@@ -1,31 +1,36 @@
-// In-process event bus. Anything that changes state, and every log entry, is published here; the
-// /api/events stream forwards it to every open dashboard, which is what makes bank and PayPal
-// events show up live. One process only: behind several instances this becomes Redis pub/sub or
-// Postgres LISTEN/NOTIFY with the same functions.
+// In-process event bus. A change to one person's data is published to that person's open
+// dashboards; log entries go to administrators only. One process only: behind several instances
+// this becomes Redis pub/sub or Postgres LISTEN/NOTIFY with the same functions.
 
 import type { LiveEvent, LogEntry } from '@/domain/types';
 
-type Listener = (event: LiveEvent) => void;
+interface Listener {
+  userId: string;
+  admin: boolean;
+  send: (event: LiveEvent) => void;
+}
 
-const bus = globalThis as unknown as { __substerListeners?: Set<Listener> };
-const listeners = (bus.__substerListeners ??= new Set<Listener>());
+const bus = globalThis as unknown as { __substerSubscribers?: Set<Listener> };
+const listeners = (bus.__substerSubscribers ??= new Set<Listener>());
 
-export function subscribe(listener: Listener) {
+export function subscribe(userId: string, admin: boolean, send: Listener['send']) {
+  const listener = { userId, admin, send };
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-function emit(event: LiveEvent) {
+function emit(event: LiveEvent, to: (listener: Listener) => boolean) {
   for (const listener of listeners) {
+    if (!to(listener)) continue;
     try {
-      listener(event);
+      listener.send(event);
     } catch {
       listeners.delete(listener);
     }
   }
 }
 
-export const publish = (reason: string) => emit({ type: 'state', reason, at: new Date().toISOString() });
-export const publishLog = (entry: LogEntry) => emit({ type: 'log', entry });
+export const publishTo = (userId: string, reason: string) => emit({ type: 'state', reason, at: new Date().toISOString() }, (l) => l.userId === userId);
+export const publishLog = (entry: LogEntry) => emit({ type: 'log', entry }, (l) => l.admin);

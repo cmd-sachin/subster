@@ -37,7 +37,7 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
           <p className="mt-2 text-[14px] font-semibold leading-snug">{check.headline}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">{check.recommendation.text}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={() => setOpen('verdict')} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+            <button onClick={() => setOpen('verdict')} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90">
               See the full verdict
             </button>
             <button onClick={() => setOpen('ask')} className="rounded-lg border border-white/10 px-3 py-1.5 text-[13px] font-medium hover:bg-white/[0.07]">
@@ -49,7 +49,7 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
       ) : (
         <div>
           <p className="text-[13px] leading-relaxed text-muted">A few quick questions, then the agent checks whether {sub.name} suits how you actually use it, looks up what it can live, and compares it with the alternatives.</p>
-          <button onClick={() => setOpen('ask')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+          <button onClick={() => setOpen('ask')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on hover:opacity-90">
             <Sparkles size={14} aria-hidden="true" /> Is {sub.name} right for me?
           </button>
         </div>
@@ -175,7 +175,7 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
 
   // Rendered on the page itself: inside the service panel, the panel's own animation would clip it.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-sm" onClick={onClose}>
       <div
         ref={dialog}
         role="dialog"
@@ -184,20 +184,20 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{ outline: 'none' }}
-        className="rise flex max-h-[min(720px,92vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[#080b18] shadow-2xl"
+        className="rise flex max-h-[min(720px,92vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-[26px] border border-white/10 bg-surface shadow-2xl"
       >
-        <header className="brand-blue relative px-6 pb-5 pt-5 text-white">
+        <header className="brand-blue relative px-6 pb-5 pt-5 text-on">
           <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 rounded-full bg-black/20 p-1.5 hover:bg-black/35">
             <X size={16} />
           </button>
           <div className="flex items-center gap-3">
             <AppLogo providerId={sub.providerId} category={sub.category} color={sub.color} size={44} />
             <div>
-              <p className="text-[11px] font-semibold text-white/75">Fit check</p>
+              <p className="text-[11px] font-semibold text-on/75">Fit check</p>
               <h2 className="text-[19px] font-semibold tracking-tight">Is {sub.name} right for you?</h2>
             </div>
           </div>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-on/20" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
             <div className="h-full rounded-full bg-sun transition-[width] duration-500" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
         </header>
@@ -231,7 +231,7 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
                     <ul className="mb-3 flex flex-wrap gap-2" aria-label="Your picks">
                       {chosen.map((title) => (
                         <li key={title}>
-                          <button onClick={() => toggle(title)} className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-[13px] font-semibold text-white" aria-label={`Remove ${title}`}>
+                          <button onClick={() => toggle(title)} className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-[13px] font-semibold text-on" aria-label={`Remove ${title}`}>
                             {title} <X size={13} aria-hidden="true" />
                           </button>
                         </li>
@@ -283,7 +283,7 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
                         className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-[14px] font-medium transition-colors ${on ? 'border-accent bg-accent-soft text-ink' : 'border-white/10 hover:border-white/25 hover:bg-white/[0.04]'}`}
                       >
                         {option}
-                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${question.kind === 'choice' ? 'rounded-full' : 'rounded-md'} border ${on ? 'border-accent bg-accent text-white' : 'border-white/25'}`}>{on && <Check size={13} strokeWidth={3} aria-hidden="true" />}</span>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${question.kind === 'choice' ? 'rounded-full' : 'rounded-md'} border ${on ? 'border-accent bg-accent text-on' : 'border-white/25'}`}>{on && <Check size={13} strokeWidth={3} aria-hidden="true" />}</span>
                       </button>
                     );
                   })}
@@ -338,7 +338,7 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
                     Skip
                   </button>
                 )}
-                <button onClick={next} disabled={!value} className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
+                <button onClick={next} disabled={!value} className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-on hover:opacity-90 disabled:opacity-40">
                   {index < questions.length - 1 || !askedFollowUps ? 'Continue' : 'Get my verdict'} <ArrowRight size={15} aria-hidden="true" />
                 </button>
               </div>
@@ -356,7 +356,7 @@ function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: 
               >
                 Answer again
               </button>
-              <button onClick={onClose} className="rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90">
+              <button onClick={onClose} className="rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-on hover:opacity-90">
                 Done
               </button>
             </>

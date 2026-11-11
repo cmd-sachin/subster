@@ -18,5 +18,5 @@ async function PUT() {
 }
 
 export const Route = createFileRoute('/api/presence')({
-  server: { handlers: { POST: handle('presence', POST, { quiet: true }), PUT: handle('presence.verify', PUT) } },
+  server: { handlers: { POST: handle('presence', POST, { quiet: true, access: 'device' }), PUT: handle('presence.verify', PUT) } },
 });

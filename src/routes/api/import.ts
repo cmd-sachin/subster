@@ -31,5 +31,5 @@ async function POST({ request }: RouteContext) {
 }
 
 export const Route = createFileRoute('/api/import')({
-  server: { handlers: { POST: handle('import', POST) } },
+  server: { handlers: { POST: handle('import', POST, { needs: 'connect' }) } },
 });

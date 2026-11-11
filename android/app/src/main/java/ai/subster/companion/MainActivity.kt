@@ -84,6 +84,7 @@ private fun CompanionScreen() {
 
     var hasAccess by remember { mutableStateOf(UsageReader.hasAccess(context)) }
     var serverUrl by remember { mutableStateOf(prefs.serverUrl) }
+    var deviceKey by remember { mutableStateOf(prefs.deviceKey) }
     var syncing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf(prefs.lastSyncMessage) }
     var ok by remember { mutableStateOf(true) }
@@ -98,6 +99,7 @@ private fun CompanionScreen() {
 
     fun sync() {
         prefs.serverUrl = serverUrl
+        prefs.deviceKey = deviceKey
         syncing = true
         scope.launch {
             val result = Sync.run(context)
@@ -165,6 +167,15 @@ private fun CompanionScreen() {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = { Text("Emulator: http://10.0.2.2:3000. A phone needs your deployed https URL.", color = Faint) },
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = deviceKey,
+                    onValueChange = { deviceKey = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Device key") },
+                    supportingText = { Text("From the Connect page in Subster. It ties this phone to your account.", color = Faint) },
                 )
                 Spacer(Modifier.height(8.dp))
                 Button(

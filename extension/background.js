@@ -14,6 +14,12 @@
 import { authFromCookies, localDate, originsFor, pickSite } from './logic.js';
 
 const DEFAULT_SERVER = 'http://localhost:3000';
+
+/** The headers for a call to the server: the device key says whose usage this is. */
+async function headersFor(json) {
+  const { deviceKey } = await store.get('deviceKey');
+  return { ...(json ? { 'Content-Type': 'application/json' } : { Accept: 'application/json' }), ...(deviceKey ? { Authorization: `Bearer ${deviceKey}` } : {}) };
+}
 const TICK_MINUTES = 1;
 const SYNC_MINUTES = 5;
 // One settle never credits more than this, so a sleeping laptop or a stopped worker adds nothing.
@@ -68,7 +74,7 @@ async function settle() {
 async function postPresence(sites) {
   const { serverUrl = DEFAULT_SERVER } = await store.get('serverUrl');
   try {
-    await fetch(`${serverUrl}/api/presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sites }) });
+    await fetch(`${serverUrl}/api/presence`, { method: 'POST', headers: await headersFor(true), body: JSON.stringify({ sites }) });
   } catch {
     // The server is not running. The next sync reports the totals; presence is only ever current.
   }
@@ -97,7 +103,7 @@ async function checkSignIn() {
 async function sync() {
   const { serverUrl = DEFAULT_SERVER } = await store.get('serverUrl');
   try {
-    const listed = await fetch(`${serverUrl}/api/usage`, { headers: { Accept: 'application/json' } });
+    const listed = await fetch(`${serverUrl}/api/usage`, { headers: await headersFor(false) });
     if (!listed.ok) throw new Error(`Server answered ${listed.status}`);
     const sites = (await listed.json()).sites ?? [];
     await store.set({ sites });
@@ -113,7 +119,7 @@ async function sync() {
     }
     let accepted = 0;
     if (days.length > 0) {
-      const sent = await fetch(`${serverUrl}/api/usage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'web', days }) });
+      const sent = await fetch(`${serverUrl}/api/usage`, { method: 'POST', headers: await headersFor(true), body: JSON.stringify({ source: 'web', days }) });
       if (!sent.ok) throw new Error(`Server answered ${sent.status}`);
       accepted = (await sent.json()).accepted ?? 0;
     }

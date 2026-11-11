@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Activity, Banknote, Bot, Download, ExternalLink, FlaskConical, Globe, KeyRound, Landmark, RefreshCw, Settings2, Smartphone, Tags, Trash2 } from 'lucide-react';
+import { Activity, AtSign, Banknote, Bot, Download, ExternalLink, FlaskConical, Globe, KeyRound, Landmark, RefreshCw, Settings2, Smartphone, Tags, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
 import { ConnectionBadge, since } from '@/components/connection';
 import { useApp, type MutateResult } from '@/components/app-state';
+import { useSession } from '@/components/session';
 import { CATEGORY_LABEL, providerById, webDomains } from '@/domain/catalog';
 import { diffDays, money, today } from '@/domain/dates';
+import { maskUpi, upiActivity, upiApp } from '@/domain/upi';
 import type { AppState, Currency, Subscription } from '@/domain/types';
 import { Loader } from '@/components/loader';
 
@@ -147,7 +149,7 @@ function Connections() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-6 px-4 py-6 md:px-8">
+    <div className="space-y-6 px-4 py-6 md:px-8">
       <header>
         <p className="eyebrow">Sources and settings</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]">Connections</h1>
@@ -298,6 +300,8 @@ function Connections() {
             </>
           )}
         </Card>
+
+        <UpiCard state={state} mutate={mutate} />
       </Group>
 
       <Group title="Usage" note="What you use">
@@ -354,6 +358,8 @@ function Connections() {
           )}
         </section>
 
+        <DeviceKey />
+
         <div className="grid gap-4 lg:grid-cols-2">
           <Card id="browser" icon={Globe} title="Browser extension" badge={web.days > 0 ? `Last report ${ago(web.last)}` : 'Not reporting'} live={web.days > 0}>
             <p className="text-[13px] text-muted">Sees which subscription sites you use and whether you are signed in. Totals only.</p>
@@ -364,7 +370,7 @@ function Connections() {
                 <Fact label="Sites it can measure" value={String(webSites.length)} />
               </dl>
             ) : (
-              <Steps items={['Add the Subster extension to Chrome.', 'Open it and press Sync now.', 'Press Monitor sign-in.']} />
+              <Steps items={['Add the Subster extension to Chrome.', 'Paste your device key into it.', 'Press Sync now, then Monitor sign-in.']} />
             )}
             <SiteList label="Watching" empty="Nothing to watch yet." items={webSites.map((s) => ({ sub: s, text: sitesOf(s).join(', ') }))} />
           </Card>
@@ -415,7 +421,7 @@ function Connections() {
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {state.integrations.spotify && !state.accounts.some((a) => a.providerId === 'spotify') && (
-              <a href="/api/accounts/spotify/start" className="inline-flex items-center gap-2 rounded-xl bg-[#1ed760] px-3 py-2 text-[13px] font-semibold text-black hover:opacity-90">
+              <a href="/api/accounts/spotify/start" className="inline-flex items-center gap-2 rounded-xl bg-[#1ed760] px-3 py-2 text-[13px] font-semibold text-ink hover:opacity-90">
                 <KeyRound size={14} aria-hidden="true" /> Sign in with Spotify
               </a>
             )}
@@ -545,6 +551,132 @@ function Health({ href, icon: Icon, name, ok, status, detail }: { href: string; 
   );
 }
 
+/** The key the browser extension and the phone app use to report usage for this account. */
+function DeviceKey() {
+  const { me, refresh } = useSession();
+  const [shown, setShown] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!me?.deviceKey) return null;
+  const key = me.deviceKey;
+
+  return (
+    <Card id="device-key" icon={KeyRound} title="Device key">
+      <p className="text-[13px] text-muted">Paste this into the browser extension and the phone app so their usage reports reach your account. Treat it like a password.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <code className="num min-w-0 flex-1 truncate rounded-full border border-white/10 bg-black/30 px-4 py-2 text-[13px] sm:max-w-[420px]">{shown ? key : `${key.slice(0, 6)}${'•'.repeat(18)}`}</code>
+        <button onClick={() => setShown(!shown)} className="rounded-full border border-white/10 px-3.5 py-2 text-[13px] hover:border-white/25">
+          {shown ? 'Hide' : 'Show'}
+        </button>
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(key);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch {
+              setShown(true);
+            }
+          }}
+          className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on"
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+        <button
+          onClick={async () => {
+            await fetch('/api/auth/onboard', { method: 'PUT' });
+            await refresh();
+          }}
+          title="Makes a new key. The old one stops working."
+          className="rounded-full border border-white/10 px-3.5 py-2 text-[13px] text-muted hover:border-bad hover:text-bad"
+        >
+          Replace
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+/** UPI IDs: link one to have UPI payments recognised and to be sent to the right place to manage AutoPay. */
+function UpiCard({ state, mutate }: { state: AppState; mutate: (url: string, body?: unknown, method?: string) => Promise<MutateResult> }) {
+  const [vpa, setVpa] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ids = state.upiIds;
+  const activity = upiActivity(state.bankTransactions, ids);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    const res = await mutate('/api/upi', { vpa });
+    setBusy(false);
+    setError(res.ok ? null : (res.error ?? 'That could not be linked.'));
+    if (res.ok) setVpa('');
+  }
+
+  return (
+    <Card id="upi" icon={AtSign} title="UPI" badge={ids.length ? `${ids.length} linked` : 'Not linked'} live={ids.length > 0}>
+      <p className="text-[13px] text-muted">Link a UPI ID to have your UPI and AutoPay payments recognised, and to be taken to the right screen to pause or revoke a mandate.</p>
+
+      {ids.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {ids.map((item) => {
+            const { app, where } = upiApp(item.vpa);
+            return (
+              <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-white/[0.04] px-3.5 py-2.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
+                  <AtSign size={15} aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="num block text-[14px] font-medium">{maskUpi(item.vpa)}</span>
+                  <span className="block text-[12px] text-muted">
+                    Manage AutoPay in {app}: {where}
+                  </span>
+                </span>
+                <button onClick={() => void mutate('/api/upi', { id: item.id }, 'DELETE')} aria-label={`Remove ${maskUpi(item.vpa)}`} className="rounded-full border border-white/10 px-3 py-1.5 text-[12px] text-muted hover:border-bad hover:text-bad">
+                  Remove
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {ids.length > 0 && (
+        <dl className="mt-3 grid grid-cols-3 gap-x-6 text-[13px]">
+          <Fact label="UPI payments seen" value={String(activity.payments)} />
+          <Fact label="AutoPay" value={String(activity.autopay)} />
+          <Fact label="Subscriptions on UPI" value={String(activity.subscriptions)} />
+        </dl>
+      )}
+
+      <form onSubmit={add} className="mt-4 flex flex-wrap items-center gap-2">
+        <label htmlFor="upi-id" className="sr-only">
+          UPI ID
+        </label>
+        <input
+          id="upi-id"
+          value={vpa}
+          onChange={(e) => setVpa(e.target.value)}
+          placeholder="name@bank"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          className="num min-w-0 flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-[14px] placeholder:text-faint sm:max-w-[320px]"
+        />
+        <button type="submit" disabled={busy || !vpa.trim()} className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-on disabled:opacity-40">
+          {busy ? 'Linking' : 'Link UPI ID'}
+        </button>
+      </form>
+      {error && (
+        <p role="alert" className="mt-2 text-[13px] text-bad">
+          {error}
+        </p>
+      )}
+      <p className="mt-3 text-[12px] text-faint">Kept on this device only. Subster cannot move money or change a mandate over UPI; you do that in your UPI app.</p>
+    </Card>
+  );
+}
+
 function Group({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
   return (
     <section className="space-y-4" aria-label={title}>
@@ -623,7 +755,7 @@ function Option({ title, subtitle, ready, missing, children }: { title: string; 
 
 function Button({ children, onClick, busy, primary }: { children: React.ReactNode; onClick: () => void; busy?: boolean; primary?: boolean }) {
   return (
-    <button onClick={onClick} disabled={busy} className={`rounded-xl px-3 py-2 text-[13px] font-medium transition-opacity disabled:opacity-50 ${primary ? 'bg-accent font-semibold text-white hover:opacity-90' : 'border border-white/10 hover:bg-white/[0.07]'}`}>
+    <button onClick={onClick} disabled={busy} className={`rounded-xl px-3 py-2 text-[13px] font-medium transition-opacity disabled:opacity-50 ${primary ? 'bg-accent font-semibold text-on hover:opacity-90' : 'border border-white/10 hover:bg-white/[0.07]'}`}>
       {busy ? 'Working' : children}
     </button>
   );

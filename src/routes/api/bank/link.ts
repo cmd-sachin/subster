@@ -19,5 +19,5 @@ function DELETE() {
 }
 
 export const Route = createFileRoute('/api/bank/link')({
-  server: { handlers: { POST: handle('bank.link', POST), DELETE: handle('bank.unlink', DELETE) } },
+  server: { handlers: { POST: handle('bank.link', POST, { needs: 'connect' }), DELETE: handle('bank.unlink', DELETE) } },
 });

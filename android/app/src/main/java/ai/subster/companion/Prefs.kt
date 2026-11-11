@@ -11,6 +11,11 @@ class Prefs(context: Context) {
         get() = prefs.getString("serverUrl", "http://10.0.2.2:3000") ?: "http://10.0.2.2:3000"
         set(value) = prefs.edit().putString("serverUrl", value.trim().trimEnd('/')).apply()
 
+    /** Ties this phone's reports to one Subster account. Copied from the Connect page. */
+    var deviceKey: String
+        get() = prefs.getString("deviceKey", "") ?: ""
+        set(value) = prefs.edit().putString("deviceKey", value.trim()).apply()
+
     var lastSyncAt: Long
         get() = prefs.getLong("lastSyncAt", 0L)
         set(value) = prefs.edit().putLong("lastSyncAt", value).apply()

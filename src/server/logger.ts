@@ -9,9 +9,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { LogEntry, LogLevel } from '@/domain/types';
+import { DATA_DIR } from './data-dir';
 import { publishLog } from './events';
 
-const DIR = path.join(process.cwd(), '.data', 'logs');
+const DIR = path.join(DATA_DIR, 'logs');
 const FILE = path.join(DIR, 'app.log');
 const MAX_BYTES = 5 * 1024 * 1024;
 const RING_SIZE = 1500;
@@ -21,7 +22,7 @@ const memory = globalThis as unknown as { __substerLogs?: LogEntry[]; __substerL
 const ring = (memory.__substerLogs ??= []);
 
 /** Carries the current request id to every log call made while handling that request. */
-export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
+export const requestContext = new AsyncLocalStorage<{ requestId: string; userId?: string }>();
 
 function redact(value: unknown, depth = 0): unknown {
   if (value === null || typeof value !== 'object') return typeof value === 'string' && value.length > 2000 ? `${value.slice(0, 2000)}...` : value;
@@ -49,6 +50,7 @@ function write(level: LogLevel, scope: string, message: string, meta?: Record<st
     scope,
     message,
     requestId: requestContext.getStore()?.requestId,
+    userId: requestContext.getStore()?.userId,
     ...(meta && Object.keys(meta).length > 0 && { meta: redact(meta) as Record<string, unknown> }),
   };
   ring.push(entry);

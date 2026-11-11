@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as SavingsRouteImport } from './routes/savings'
 import { Route as ServicesRouteImport } from './routes/services'
@@ -30,9 +32,13 @@ import { Route as ApiSettingsRouteImport } from './routes/api/settings'
 import { Route as ApiStateRouteImport } from './routes/api/state'
 import { Route as ApiStudioAiRouteImport } from './routes/api/studio-ai'
 import { Route as ApiTransactionsRouteImport } from './routes/api/transactions'
+import { Route as ApiUpiRouteImport } from './routes/api/upi'
 import { Route as ApiUsageRouteImport } from './routes/api/usage'
 import { Route as ApiAccountsLinkRouteImport } from './routes/api/accounts/link'
 import { Route as ApiActionsIdRouteImport } from './routes/api/actions/$id'
+import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
+import { Route as ApiAuthOnboardRouteImport } from './routes/api/auth/onboard'
+import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiBankCallbackRouteImport } from './routes/api/bank/callback'
 import { Route as ApiBankCandidatesRouteImport } from './routes/api/bank/candidates'
 import { Route as ApiBankLinkRouteImport } from './routes/api/bank/link'
@@ -47,16 +53,31 @@ import { Route as ApiPaypalWebhookRouteImport } from './routes/api/paypal/webhoo
 import { Route as ApiSubscriptionsIdRouteImport } from './routes/api/subscriptions/$id'
 import { Route as ApiAccountsSpotifyCallbackRouteImport } from './routes/api/accounts/spotify/callback'
 import { Route as ApiAccountsSpotifyStartRouteImport } from './routes/api/accounts/spotify/start'
+import { Route as ApiAdminUsersIndexRouteImport } from './routes/api/admin/users/index'
+import { Route as ApiAdminUsersIdRouteImport } from './routes/api/admin/users/$id'
 import { Route as ApiBankAggregatorStartRouteImport } from './routes/api/bank/aggregator/start'
+import { Route as ApiChatSessionsIndexRouteImport } from './routes/api/chat/sessions/index'
+import { Route as ApiChatSessionsIdIndexRouteImport } from './routes/api/chat/sessions/$id/index'
+import { Route as ApiChatSessionsIdMessagesRouteImport } from './routes/api/chat/sessions/$id/messages'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectRoute = ConnectRouteImport.update({
@@ -154,6 +175,11 @@ const ApiTransactionsRoute = ApiTransactionsRouteImport.update({
   path: '/api/transactions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUpiRoute = ApiUpiRouteImport.update({
+  id: '/api/upi',
+  path: '/api/upi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUsageRoute = ApiUsageRouteImport.update({
   id: '/api/usage',
   path: '/api/usage',
@@ -167,6 +193,21 @@ const ApiAccountsLinkRoute = ApiAccountsLinkRouteImport.update({
 const ApiActionsIdRoute = ApiActionsIdRouteImport.update({
   id: '/api/actions/$id',
   path: '/api/actions/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
+  id: '/api/auth/me',
+  path: '/api/auth/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthOnboardRoute = ApiAuthOnboardRouteImport.update({
+  id: '/api/auth/onboard',
+  path: '/api/auth/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
+  id: '/api/auth/session',
+  path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBankCallbackRoute = ApiBankCallbackRouteImport.update({
@@ -241,15 +282,43 @@ const ApiAccountsSpotifyStartRoute = ApiAccountsSpotifyStartRouteImport.update({
   path: '/api/accounts/spotify/start',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminUsersIndexRoute = ApiAdminUsersIndexRouteImport.update({
+  id: '/api/admin/users/',
+  path: '/api/admin/users/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminUsersIdRoute = ApiAdminUsersIdRouteImport.update({
+  id: '/api/admin/users/$id',
+  path: '/api/admin/users/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBankAggregatorStartRoute = ApiBankAggregatorStartRouteImport.update({
   id: '/api/bank/aggregator/start',
   path: '/api/bank/aggregator/start',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatSessionsIndexRoute = ApiChatSessionsIndexRouteImport.update({
+  id: '/api/chat/sessions/',
+  path: '/api/chat/sessions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatSessionsIdIndexRoute = ApiChatSessionsIdIndexRouteImport.update({
+  id: '/api/chat/sessions/$id/',
+  path: '/api/chat/sessions/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatSessionsIdMessagesRoute =
+  ApiChatSessionsIdMessagesRouteImport.update({
+    id: '/api/chat/sessions/$id/messages',
+    path: '/api/chat/sessions/$id/messages',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/connect': typeof ConnectRoute
   '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
@@ -269,9 +338,13 @@ export interface FileRoutesByFullPath {
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
   '/api/transactions': typeof ApiTransactionsRoute
+  '/api/upi': typeof ApiUpiRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
   '/api/bank/link': typeof ApiBankLinkRoute
@@ -286,11 +359,18 @@ export interface FileRoutesByFullPath {
   '/api/subscriptions/$id': typeof ApiSubscriptionsIdRoute
   '/api/accounts/spotify/callback': typeof ApiAccountsSpotifyCallbackRoute
   '/api/accounts/spotify/start': typeof ApiAccountsSpotifyStartRoute
+  '/api/admin/users/$id': typeof ApiAdminUsersIdRoute
   '/api/bank/aggregator/start': typeof ApiBankAggregatorStartRoute
+  '/api/admin/users/': typeof ApiAdminUsersIndexRoute
+  '/api/chat/sessions/': typeof ApiChatSessionsIndexRoute
+  '/api/chat/sessions/$id/messages': typeof ApiChatSessionsIdMessagesRoute
+  '/api/chat/sessions/$id/': typeof ApiChatSessionsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/connect': typeof ConnectRoute
   '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
@@ -310,9 +390,13 @@ export interface FileRoutesByTo {
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
   '/api/transactions': typeof ApiTransactionsRoute
+  '/api/upi': typeof ApiUpiRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
   '/api/bank/link': typeof ApiBankLinkRoute
@@ -327,12 +411,19 @@ export interface FileRoutesByTo {
   '/api/subscriptions/$id': typeof ApiSubscriptionsIdRoute
   '/api/accounts/spotify/callback': typeof ApiAccountsSpotifyCallbackRoute
   '/api/accounts/spotify/start': typeof ApiAccountsSpotifyStartRoute
+  '/api/admin/users/$id': typeof ApiAdminUsersIdRoute
   '/api/bank/aggregator/start': typeof ApiBankAggregatorStartRoute
+  '/api/admin/users': typeof ApiAdminUsersIndexRoute
+  '/api/chat/sessions': typeof ApiChatSessionsIndexRoute
+  '/api/chat/sessions/$id/messages': typeof ApiChatSessionsIdMessagesRoute
+  '/api/chat/sessions/$id': typeof ApiChatSessionsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/connect': typeof ConnectRoute
   '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
@@ -352,9 +443,13 @@ export interface FileRoutesById {
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
   '/api/transactions': typeof ApiTransactionsRoute
+  '/api/upi': typeof ApiUpiRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/onboard': typeof ApiAuthOnboardRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bank/callback': typeof ApiBankCallbackRoute
   '/api/bank/candidates': typeof ApiBankCandidatesRoute
   '/api/bank/link': typeof ApiBankLinkRoute
@@ -369,13 +464,20 @@ export interface FileRoutesById {
   '/api/subscriptions/$id': typeof ApiSubscriptionsIdRoute
   '/api/accounts/spotify/callback': typeof ApiAccountsSpotifyCallbackRoute
   '/api/accounts/spotify/start': typeof ApiAccountsSpotifyStartRoute
+  '/api/admin/users/$id': typeof ApiAdminUsersIdRoute
   '/api/bank/aggregator/start': typeof ApiBankAggregatorStartRoute
+  '/api/admin/users/': typeof ApiAdminUsersIndexRoute
+  '/api/chat/sessions/': typeof ApiChatSessionsIndexRoute
+  '/api/chat/sessions/$id/messages': typeof ApiChatSessionsIdMessagesRoute
+  '/api/chat/sessions/$id/': typeof ApiChatSessionsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/analytics'
+    | '/chat'
     | '/connect'
     | '/savings'
     | '/services'
@@ -395,9 +497,13 @@ export interface FileRouteTypes {
     | '/api/state'
     | '/api/studio-ai'
     | '/api/transactions'
+    | '/api/upi'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/me'
+    | '/api/auth/onboard'
+    | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
     | '/api/bank/link'
@@ -412,11 +518,18 @@ export interface FileRouteTypes {
     | '/api/subscriptions/$id'
     | '/api/accounts/spotify/callback'
     | '/api/accounts/spotify/start'
+    | '/api/admin/users/$id'
     | '/api/bank/aggregator/start'
+    | '/api/admin/users/'
+    | '/api/chat/sessions/'
+    | '/api/chat/sessions/$id/messages'
+    | '/api/chat/sessions/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/analytics'
+    | '/chat'
     | '/connect'
     | '/savings'
     | '/services'
@@ -436,9 +549,13 @@ export interface FileRouteTypes {
     | '/api/state'
     | '/api/studio-ai'
     | '/api/transactions'
+    | '/api/upi'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/me'
+    | '/api/auth/onboard'
+    | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
     | '/api/bank/link'
@@ -453,11 +570,18 @@ export interface FileRouteTypes {
     | '/api/subscriptions/$id'
     | '/api/accounts/spotify/callback'
     | '/api/accounts/spotify/start'
+    | '/api/admin/users/$id'
     | '/api/bank/aggregator/start'
+    | '/api/admin/users'
+    | '/api/chat/sessions'
+    | '/api/chat/sessions/$id/messages'
+    | '/api/chat/sessions/$id'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/analytics'
+    | '/chat'
     | '/connect'
     | '/savings'
     | '/services'
@@ -477,9 +601,13 @@ export interface FileRouteTypes {
     | '/api/state'
     | '/api/studio-ai'
     | '/api/transactions'
+    | '/api/upi'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
+    | '/api/auth/me'
+    | '/api/auth/onboard'
+    | '/api/auth/session'
     | '/api/bank/callback'
     | '/api/bank/candidates'
     | '/api/bank/link'
@@ -494,12 +622,19 @@ export interface FileRouteTypes {
     | '/api/subscriptions/$id'
     | '/api/accounts/spotify/callback'
     | '/api/accounts/spotify/start'
+    | '/api/admin/users/$id'
     | '/api/bank/aggregator/start'
+    | '/api/admin/users/'
+    | '/api/chat/sessions/'
+    | '/api/chat/sessions/$id/messages'
+    | '/api/chat/sessions/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  ChatRoute: typeof ChatRoute
   ConnectRoute: typeof ConnectRoute
   SavingsRoute: typeof SavingsRoute
   ServicesRoute: typeof ServicesRoute
@@ -519,9 +654,13 @@ export interface RootRouteChildren {
   ApiStateRoute: typeof ApiStateRoute
   ApiStudioAiRoute: typeof ApiStudioAiRoute
   ApiTransactionsRoute: typeof ApiTransactionsRoute
+  ApiUpiRoute: typeof ApiUpiRoute
   ApiUsageRoute: typeof ApiUsageRoute
   ApiAccountsLinkRoute: typeof ApiAccountsLinkRoute
   ApiActionsIdRoute: typeof ApiActionsIdRoute
+  ApiAuthMeRoute: typeof ApiAuthMeRoute
+  ApiAuthOnboardRoute: typeof ApiAuthOnboardRoute
+  ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiBankCallbackRoute: typeof ApiBankCallbackRoute
   ApiBankCandidatesRoute: typeof ApiBankCandidatesRoute
   ApiBankLinkRoute: typeof ApiBankLinkRoute
@@ -536,7 +675,12 @@ export interface RootRouteChildren {
   ApiSubscriptionsIdRoute: typeof ApiSubscriptionsIdRoute
   ApiAccountsSpotifyCallbackRoute: typeof ApiAccountsSpotifyCallbackRoute
   ApiAccountsSpotifyStartRoute: typeof ApiAccountsSpotifyStartRoute
+  ApiAdminUsersIdRoute: typeof ApiAdminUsersIdRoute
   ApiBankAggregatorStartRoute: typeof ApiBankAggregatorStartRoute
+  ApiAdminUsersIndexRoute: typeof ApiAdminUsersIndexRoute
+  ApiChatSessionsIndexRoute: typeof ApiChatSessionsIndexRoute
+  ApiChatSessionsIdMessagesRoute: typeof ApiChatSessionsIdMessagesRoute
+  ApiChatSessionsIdIndexRoute: typeof ApiChatSessionsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -548,11 +692,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect': {
@@ -688,6 +846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTransactionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/upi': {
+      id: '/api/upi'
+      path: '/api/upi'
+      fullPath: '/api/upi'
+      preLoaderRoute: typeof ApiUpiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/usage': {
       id: '/api/usage'
       path: '/api/usage'
@@ -707,6 +872,27 @@ declare module '@tanstack/react-router' {
       path: '/api/actions/$id'
       fullPath: '/api/actions/$id'
       preLoaderRoute: typeof ApiActionsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/me': {
+      id: '/api/auth/me'
+      path: '/api/auth/me'
+      fullPath: '/api/auth/me'
+      preLoaderRoute: typeof ApiAuthMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/onboard': {
+      id: '/api/auth/onboard'
+      path: '/api/auth/onboard'
+      fullPath: '/api/auth/onboard'
+      preLoaderRoute: typeof ApiAuthOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/session': {
+      id: '/api/auth/session'
+      path: '/api/auth/session'
+      fullPath: '/api/auth/session'
+      preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/bank/callback': {
@@ -807,6 +993,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAccountsSpotifyStartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/users/': {
+      id: '/api/admin/users/'
+      path: '/api/admin/users'
+      fullPath: '/api/admin/users/'
+      preLoaderRoute: typeof ApiAdminUsersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/users/$id': {
+      id: '/api/admin/users/$id'
+      path: '/api/admin/users/$id'
+      fullPath: '/api/admin/users/$id'
+      preLoaderRoute: typeof ApiAdminUsersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/bank/aggregator/start': {
       id: '/api/bank/aggregator/start'
       path: '/api/bank/aggregator/start'
@@ -814,12 +1014,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBankAggregatorStartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/sessions/': {
+      id: '/api/chat/sessions/'
+      path: '/api/chat/sessions'
+      fullPath: '/api/chat/sessions/'
+      preLoaderRoute: typeof ApiChatSessionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/sessions/$id/': {
+      id: '/api/chat/sessions/$id/'
+      path: '/api/chat/sessions/$id'
+      fullPath: '/api/chat/sessions/$id/'
+      preLoaderRoute: typeof ApiChatSessionsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/sessions/$id/messages': {
+      id: '/api/chat/sessions/$id/messages'
+      path: '/api/chat/sessions/$id/messages'
+      fullPath: '/api/chat/sessions/$id/messages'
+      preLoaderRoute: typeof ApiChatSessionsIdMessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AnalyticsRoute: AnalyticsRoute,
+  ChatRoute: ChatRoute,
   ConnectRoute: ConnectRoute,
   SavingsRoute: SavingsRoute,
   ServicesRoute: ServicesRoute,
@@ -839,9 +1062,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStateRoute: ApiStateRoute,
   ApiStudioAiRoute: ApiStudioAiRoute,
   ApiTransactionsRoute: ApiTransactionsRoute,
+  ApiUpiRoute: ApiUpiRoute,
   ApiUsageRoute: ApiUsageRoute,
   ApiAccountsLinkRoute: ApiAccountsLinkRoute,
   ApiActionsIdRoute: ApiActionsIdRoute,
+  ApiAuthMeRoute: ApiAuthMeRoute,
+  ApiAuthOnboardRoute: ApiAuthOnboardRoute,
+  ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiBankCallbackRoute: ApiBankCallbackRoute,
   ApiBankCandidatesRoute: ApiBankCandidatesRoute,
   ApiBankLinkRoute: ApiBankLinkRoute,
@@ -856,7 +1083,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSubscriptionsIdRoute: ApiSubscriptionsIdRoute,
   ApiAccountsSpotifyCallbackRoute: ApiAccountsSpotifyCallbackRoute,
   ApiAccountsSpotifyStartRoute: ApiAccountsSpotifyStartRoute,
+  ApiAdminUsersIdRoute: ApiAdminUsersIdRoute,
   ApiBankAggregatorStartRoute: ApiBankAggregatorStartRoute,
+  ApiAdminUsersIndexRoute: ApiAdminUsersIndexRoute,
+  ApiChatSessionsIndexRoute: ApiChatSessionsIndexRoute,
+  ApiChatSessionsIdMessagesRoute: ApiChatSessionsIdMessagesRoute,
+  ApiChatSessionsIdIndexRoute: ApiChatSessionsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

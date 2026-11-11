@@ -12,12 +12,13 @@ data class TrackedApp(val packageName: String, val name: String)
 /** The two calls the companion makes to the Subster server. */
 object Api {
 
-    private fun open(url: String, method: String): HttpURLConnection =
+    private fun open(url: String, method: String, deviceKey: String): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 20_000
             setRequestProperty("Accept", "application/json")
+            if (deviceKey.isNotEmpty()) setRequestProperty("Authorization", "Bearer $deviceKey")
         }
 
     private fun HttpURLConnection.readBody(): String {
@@ -26,8 +27,8 @@ object Api {
     }
 
     /** Which apps belong to subscriptions the user tracks. Nothing else is ever read. */
-    suspend fun trackedApps(serverUrl: String): List<TrackedApp> = withContext(Dispatchers.IO) {
-        val connection = open("$serverUrl/api/usage", "GET")
+    suspend fun trackedApps(serverUrl: String, deviceKey: String): List<TrackedApp> = withContext(Dispatchers.IO) {
+        val connection = open("$serverUrl/api/usage", "GET", deviceKey)
         try {
             val body = connection.readBody()
             if (connection.responseCode !in 200..299) error("Server answered ${connection.responseCode}")
@@ -42,7 +43,7 @@ object Api {
     }
 
     /** Uploads daily totals. Returns how many the server accepted. */
-    suspend fun postUsage(serverUrl: String, days: List<DayUsage>): Int = withContext(Dispatchers.IO) {
+    suspend fun postUsage(serverUrl: String, deviceKey: String, days: List<DayUsage>): Int = withContext(Dispatchers.IO) {
         val payload = JSONObject().apply {
             put("source", "android")
             put("days", JSONArray().apply {
@@ -55,7 +56,7 @@ object Api {
                 }
             })
         }
-        val connection = open("$serverUrl/api/usage", "POST").apply {
+        val connection = open("$serverUrl/api/usage", "POST", deviceKey).apply {
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
         }

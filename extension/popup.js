@@ -73,6 +73,16 @@ async function sync() {
   await render();
 }
 
+// The device key ties this browser's reports to one Subster account. It is kept in this browser
+// and sent only to the Subster server.
+$('key-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await chrome.storage.local.set({ deviceKey: $('key').value.trim() });
+  $('key').value = '';
+  $('key').placeholder = 'Saved';
+  await sync();
+});
+
 $('server').addEventListener('submit', async (event) => {
   event.preventDefault();
   let url;

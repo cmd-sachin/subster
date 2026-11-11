@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Subster usage",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tells Subster, live, which of your subscription sites you are using and whether you are signed in. Daily totals and yes/no answers only.",
   "minimum_chrome_version": "120",
   "permissions": ["tabs", "idle", "alarms", "storage", "cookies"],
