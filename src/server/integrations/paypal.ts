@@ -21,7 +21,7 @@ const api = () => (live() ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.
 export const paypalMode = (): PayPalMode => (!clientId() || !clientSecret() ? 'off' : live() ? 'live' : 'sandbox');
 
 function requireConfigured() {
-  if (paypalMode() === 'off') throw new HttpError(503, 'PayPal is not connected. Add PAYPAL_CLIENT_ID and PAYPAL_SECRET to .env.local.');
+  if (paypalMode() === 'off') throw new HttpError(503, 'PayPal is not connected yet.');
 }
 
 let sdk: { subscriptions: SubscriptionsController; transactions: TransactionSearchController } | undefined;
@@ -50,7 +50,8 @@ async function call<T>(operation: string, meta: Record<string, unknown>, fn: () 
   } catch (error) {
     const message = describe(error);
     log.error('paypal', `${operation} failed`, { ...meta, mode: paypalMode(), error: message, ms: Math.round(performance.now() - started) });
-    throw error instanceof HttpError ? error : new Error(message);
+    // The reason is in the log. What reaches the screen stays plain.
+    throw error instanceof HttpError ? error : new Error('PayPal could not complete this right now. Nothing was changed.');
   }
 }
 

@@ -36,7 +36,11 @@ async function GET() {
   return Response.json({
     packages: active.filter((s) => s.androidPackage).map((s) => ({ package: s.androidPackage, name: s.name })),
     sites: active
-      .map((s) => ({ id: s.id, name: s.name, domains: sitesOf(s), sessionCookies: sessionCookies(providerById(s.providerId ?? '')!) }))
+      .map((s) => {
+        // A subscription the catalog does not know has no site to watch.
+        const provider = providerById(s.providerId ?? '');
+        return { id: s.id, name: s.name, domains: sitesOf(s), sessionCookies: provider ? sessionCookies(provider) : [] };
+      })
       .filter((s) => s.domains.length > 0),
   });
 }

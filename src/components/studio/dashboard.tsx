@@ -13,6 +13,7 @@ import { buildStudioData } from './data';
 import { buildReport, PAGES } from './report';
 import { substerStudioTheme } from './theme';
 import { subscriptionLooks, ValueBoard } from './value-board';
+import { Loader } from '@/components/loader';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the custom widget extends Studio's default registry at runtime
 const widgets = (defaults: any) =>
@@ -68,7 +69,7 @@ export default function Dashboard() {
   const ai = useMemo(() => (aiEnabled ? buildAi() : undefined), [aiEnabled]);
   const initialState = useMemo(() => buildReport(currency), [currency]);
 
-  if (!state || !data) return <p className="p-8 text-muted">Loading analytics</p>;
+  if (!state || !data) return <Loader label="Loading analytics" />;
 
   const selectPage = (id: string) => {
     setPageId(id);
@@ -83,7 +84,7 @@ export default function Dashboard() {
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
           There is nothing to analyse yet. Add your subscriptions or link your bank and your spend, charges and usage appear here.
         </p>
-        <Link to="/connect" className="mt-5 w-fit rounded-full bg-accent px-4 py-2 text-[14px] font-semibold text-canvas hover:opacity-90">
+        <Link to="/connect" className="mt-5 w-fit rounded-full bg-accent px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90">
           Bring in your data
         </Link>
       </div>
@@ -103,7 +104,7 @@ export default function Dashboard() {
                   role="tab"
                   aria-selected={pageId === p.id}
                   onClick={() => selectPage(p.id)}
-                  className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors ${pageId === p.id ? 'bg-accent text-canvas' : 'text-muted hover:text-ink'}`}
+                  className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors ${pageId === p.id ? 'bg-accent text-white' : 'text-muted hover:text-ink'}`}
                 >
                   {p.label}
                 </button>
@@ -176,7 +177,7 @@ function Shelf({ portfolio: p }: { portfolio: Portfolio }) {
         return (
           <li key={card.label} className={`flex h-[132px] w-[236px] shrink-0 snap-start flex-col justify-between rounded-2xl p-4 ${look.dark ? 'text-canvas' : 'text-white'}`} style={{ background: look.background }}>
             <span className="flex items-start justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.08em] opacity-80">{card.label}</span>
+              <span className="text-[11px] font-bold opacity-80">{card.label}</span>
               {card.logo && <AppLogo providerId={card.logo.providerId} category={card.logo.category} color={card.logo.color} size={34} />}
             </span>
             <span>

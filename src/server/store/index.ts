@@ -42,6 +42,8 @@ export function db(): Db {
   const stored = adapter.load();
   // A document from an older schema is replaced rather than migrated.
   cache.__substerDb = stored && stored.version === SCHEMA_VERSION ? stored : emptyDb();
+  // An earlier version kept whole fetched pages here, which made the file enormous.
+  for (const key of Object.keys(cache.__substerDb.liveCache ?? {})) if (key.startsWith('page:')) delete cache.__substerDb.liveCache![key];
   if (cache.__substerDb !== stored) adapter.persist(cache.__substerDb);
   return cache.__substerDb;
 }

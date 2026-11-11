@@ -96,13 +96,13 @@ export function AgentPanel() {
         <div>
           <h2 className="text-[14px] font-semibold">Agent</h2>
           <p className="text-[12px] text-muted">
-            {engine === 'gemini' ? 'Gemini decides what to inspect and propose.' : 'Rules engine. Add a Gemini API key for full reasoning.'}
+            {engine === 'gemini' ? 'Looks through everything and proposes. You decide.' : 'Working from your own data. You decide.'}
           </p>
         </div>
         <button
           onClick={() => run('sweep')}
           disabled={Boolean(busy)}
-          className="shrink-0 rounded-xl bg-accent px-3.5 py-2 text-[13px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="shrink-0 rounded-xl bg-accent px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           <ScanSearch size={15} className="mr-1.5 inline" aria-hidden="true" />
           {busy === 'sweep' ? 'Auditing' : 'Run audit'}
@@ -113,15 +113,14 @@ export function AgentPanel() {
         {idle && (
           <div className="space-y-3 text-[13px] text-muted">
             <p>
-              Run an audit and the agent will read your payments and usage, then put anything worth acting on in your inbox. It cannot change a subscription
-              without your approval.
+              Ask anything, or run an audit.
             </p>
             {lastRun && (
               <div className="rounded-xl bg-white/[0.06] px-3 py-2.5">
-                <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-faint">
-                  Last run · {lastRun.trigger === 'webhook' ? `triggered by ${lastRun.triggerDetail}` : lastRun.trigger} · {new Date(lastRun.startedAt).toLocaleString()}
+                <div className="mb-1 text-[11px] font-medium text-faint">
+                  {lastRun.trigger === 'schedule' ? 'Daily audit' : lastRun.trigger === 'webhook' ? 'After a payment event' : 'Last audit'} · {new Date(lastRun.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                 </div>
-                <p className="whitespace-pre-line text-ink">{lastRun.summary}</p>
+                <p className="line-clamp-3 whitespace-pre-line text-ink">{lastRun.summary}</p>
               </div>
             )}
           </div>
@@ -141,7 +140,7 @@ export function AgentPanel() {
               <li key={i} className="rise flex gap-2.5 text-[13px]">
                 <span
                   className={`mt-[3px] h-4 shrink-0 rounded px-1.5 text-[10px] font-semibold uppercase leading-4 tracking-wide ${
-                    step.kind === 'action' ? 'bg-accent text-canvas' : step.kind === 'thought' ? 'bg-info-soft text-info' : 'bg-white/[0.06] text-muted'
+                    step.kind === 'action' ? 'bg-accent text-white' : step.kind === 'thought' ? 'bg-info-soft text-info' : 'bg-white/[0.06] text-muted'
                   }`}
                 >
                   {step.kind === 'thought' ? 'Thinks' : (TOOL_LABEL[step.tool ?? ''] ?? step.tool)}

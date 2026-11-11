@@ -1,10 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { handle, type RouteContext } from '@/server/http';
 import { runAgent, SWEEP_TASK } from '@/server/agent/run';
+import { scheduledAudit } from '@/server/agent/schedule';
+import { buildState } from '@/server/services/state';
 import type { StreamEvent } from '@/domain/types';
 
 interface Body {
-  mode?: 'sweep' | 'chat';
+  /** schedule: run the daily audit now, exactly as the timer would. */
+  mode?: 'sweep' | 'chat' | 'schedule';
   /** 'rules' runs the deterministic engine instead of the model. */
   engine?: 'rules';
   message?: string;
@@ -14,6 +17,10 @@ interface Body {
 // Streams the run as newline-delimited JSON so the UI can show each step as it happens.
 async function POST({ request }: RouteContext) {
   const body = (await request.json().catch(() => ({}))) as Body;
+  if (body.mode === 'schedule') {
+    const run = await scheduledAudit(true);
+    return Response.json({ ran: Boolean(run), summary: run?.summary, state: buildState() });
+  }
   const chat = body.mode === 'chat';
   const message = (body.message ?? '').trim().slice(0, 2000);
   if (chat && !message) return Response.json({ error: 'message is required' }, { status: 400 });

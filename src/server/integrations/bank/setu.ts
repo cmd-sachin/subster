@@ -33,7 +33,7 @@ async function login(): Promise<string> {
 }
 
 async function setu<T>(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>): Promise<T> {
-  if (!setuConfigured()) throw new Error('Setu is not configured. Set SETU_CLIENT_ID, SETU_CLIENT_SECRET and SETU_PRODUCT_INSTANCE_ID.');
+  if (!setuConfigured()) throw new Error('Bank linking through Account Aggregator is not available yet.');
   // The token lifetime is not documented, so one is reused until Setu answers 401, then replaced once.
   for (let attempt = 0; ; attempt++) {
     token ??= await login();

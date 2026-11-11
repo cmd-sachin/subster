@@ -6,6 +6,7 @@ import { useApp } from '@/components/app-state';
 import { catalogPlans, providerById } from '@/domain/catalog';
 import { cycleShort, money, shortDate } from '@/domain/dates';
 import type { AppState, Insight, LivePlan } from '@/domain/types';
+import { Loader } from '@/components/loader';
 
 export const Route = createFileRoute('/savings')({ component: Savings });
 
@@ -44,7 +45,7 @@ function Savings() {
   const { state, mutate } = useApp();
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
-  if (!state) return <p className="p-8 text-muted">Loading savings</p>;
+  if (!state) return <Loader label="Loading savings" />;
 
   const { portfolio } = state;
   const live = portfolio.insights.filter((i) => i.sub.status !== 'cancelled' && i.sub.status !== 'paused');
@@ -53,6 +54,7 @@ function Savings() {
     .sort((a, b) => b.recommendation.savingsMonthly - a.recommendation.savingsMonthly);
   const annual = annualSwitches(state, new Set(moves.map((i) => i.sub.id)));
   const unmeasured = live.filter((i) => i.verdict === 'unmeasured');
+  const kept = live.filter((i) => i.keptByChoice);
   const failing = live.filter((i) => i.recommendation.action === 'retry_payment');
 
   const possible = round(moves.reduce((t, i) => t + i.recommendation.savingsMonthly, 0));
@@ -82,7 +84,7 @@ function Savings() {
       <header>
         <p className="eyebrow">Recommendations</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]">Savings</h1>
-        <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted">Every suggestion comes from your own payments and measured use. Nothing changes until you choose it.</p>
+        <p className="mt-1.5 text-[14px] text-muted">From your own payments and use. Nothing changes until you say so.</p>
       </header>
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -147,7 +149,7 @@ function Savings() {
                   <div className="mt-3 flex flex-wrap items-center gap-2 pl-[52px]">
                     {waiting?.status === 'guided' ? (
                       <>
-                        <a href={i.sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
+                        <a href={i.sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
                           Finish at {i.sub.name} <ExternalLink size={13} aria-hidden="true" />
                         </a>
                         <button
@@ -170,8 +172,8 @@ function Savings() {
                     ) : i.sub.policy === 'locked' ? (
                       <span className="text-[12px] text-faint">You locked this subscription, so nothing is changed from here.</span>
                     ) : (
-                      <button onClick={() => act(i, move)} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50">
-                        {busy === i.sub.id ? 'Working' : `${VERB[move]} it`}
+                      <button onClick={() => act(i, move)} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                        {busy === i.sub.id ? 'Working' : i.sub.paypalSubscriptionId && state.integrations.paypal !== 'off' && move !== 'downgrade' ? `${VERB[move]} with PayPal` : `${VERB[move]} it`}
                       </button>
                     )}
                   </div>
@@ -205,6 +207,38 @@ function Savings() {
             ))}
           </ul>
           <p className="border-t border-white/[0.06] px-4 py-2.5 text-[12px] text-faint">Yearly billing only pays off for something you will keep all year. Subscriptions with a change recommended above are left out.</p>
+        </section>
+      )}
+
+      {kept.length > 0 && (
+        <section className="panel" aria-label="Kept on purpose">
+          <h2 className="border-b border-white/[0.06] px-4 py-3 text-[14px] font-semibold">Kept on purpose</h2>
+          <ul>
+            {kept.map((i) => (
+              <li key={i.sub.id} className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] px-4 py-3 last:border-b-0">
+                <AppLogo providerId={i.sub.providerId} category={i.sub.category} color={i.sub.color} size={28} />
+                <span className="min-w-0 flex-1 text-[13px]">
+                  <span className="font-medium">{i.sub.name}</span>{' '}
+                  <span className="text-muted">
+                    You said no to {i.keptByChoice!.type === 'cancel' ? 'cancelling' : i.keptByChoice!.type === 'pause' ? 'pausing' : 'downgrading'} it on {shortDate(i.keptByChoice!.at.slice(0, 10))}, so it is left alone.
+                  </span>
+                </span>
+                <button
+                  onClick={async () => {
+                    setBusy(i.sub.id);
+                    const res = await mutate(`/api/subscriptions/${i.sub.id}`, { reconsider: true }, 'PATCH');
+                    setNotice({ ok: res.ok, text: res.ok ? `${i.sub.name} is back in the recommendations.` : (res.error ?? 'Something went wrong') });
+                    setBusy(null);
+                  }}
+                  disabled={busy !== null}
+                  className="rounded-lg border border-white/10 px-2.5 py-1 text-[12px] font-medium hover:bg-white/[0.07] disabled:opacity-50"
+                >
+                  Ask me again
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="border-t border-white/[0.06] px-4 py-2.5 text-[12px] text-faint">Subster remembers a no. The suggestion returns on its own if the price goes up, your use drops by half, or after 45 days.</p>
         </section>
       )}
 

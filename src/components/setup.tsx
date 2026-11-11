@@ -103,7 +103,7 @@ export function Setup({ state }: { state: AppState }) {
           return (
             <li key={step.key} className="flex flex-col p-5">
               <div className="flex items-center justify-between">
-                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${step.done ? 'bg-accent text-canvas' : current ? 'bg-[var(--blue)] text-white' : 'bg-white/[0.06] text-muted'}`} aria-hidden="true">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${step.done ? 'bg-accent text-white' : current ? 'bg-[var(--blue)] text-white' : 'bg-white/[0.06] text-muted'}`} aria-hidden="true">
                   {step.done ? <Check size={17} strokeWidth={2.5} /> : <Icon size={17} strokeWidth={1.75} />}
                 </span>
                 <span className="num text-[12px] text-faint">
@@ -116,7 +116,7 @@ export function Setup({ state }: { state: AppState }) {
               {!step.done && (
                 <Link
                   to={step.to}
-                  className={`mt-3 w-fit rounded-lg px-3 py-1.5 text-[13px] font-semibold ${current ? 'bg-accent text-canvas hover:opacity-90' : 'border border-[var(--hairline)] font-medium hover:bg-white/[0.06]'}`}
+                  className={`mt-3 w-fit rounded-lg px-3 py-1.5 text-[13px] font-semibold ${current ? 'bg-accent text-white hover:opacity-90' : 'border border-[var(--hairline)] font-medium hover:bg-white/[0.06]'}`}
                 >
                   {step.cta}
                 </Link>

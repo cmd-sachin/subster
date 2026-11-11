@@ -3,7 +3,7 @@
 
 import { ChevronDown, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
-import { diffDays, money, shortDate, today } from '@/domain/dates';
+import { diffDays, money, today } from '@/domain/dates';
 import type { AgentAction } from '@/domain/types';
 import { AppLogo } from './app-logo';
 import { useApp } from './app-state';
@@ -49,7 +49,7 @@ export function Inbox() {
       )}
 
       {pending.length === 0 && guided.length === 0 && (
-        <p className="px-4 py-6 text-[13px] text-muted">Nothing is waiting. Run an audit and the agent will bring anything worth acting on here.</p>
+        <p className="px-4 py-6 text-[13px] text-muted">Nothing needs you right now.</p>
       )}
 
       <ul>
@@ -68,7 +68,7 @@ export function Inbox() {
               <p className="mt-1.5 text-[13px] leading-relaxed">{a.reason}</p>
               {a.evidence.length > 0 && (
                 <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                  {a.evidence.map((e) => (
+                  {a.evidence.slice(0, 1).map((e) => (
                     <li key={e} className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[12px] text-muted">
                       {e}
                     </li>
@@ -79,15 +79,15 @@ export function Inbox() {
                 <button
                   onClick={() => decide(a.id, 'approve')}
                   disabled={busy === a.id}
-                  className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50"
+                  className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 >
-                  {busy === a.id ? 'Working' : a.channel === 'paypal_api' ? `Approve: ${VERB[a.type].toLowerCase()} via PayPal` : `Approve: show me how`}
+                  {busy === a.id ? 'Working' : a.channel === 'paypal_api' ? `${VERB[a.type]} with PayPal` : VERB[a.type]}
                 </button>
                 <button onClick={() => decide(a.id, 'reject')} disabled={busy === a.id} className="rounded-xl border border-white/10 px-3 py-1.5 text-[13px] hover:bg-white/[0.07] disabled:opacity-50">
-                  {a.type === 'subscribe' ? 'Not now' : 'Keep as is'}
+                  {a.type === 'subscribe' ? 'Not now' : 'Keep'}
                 </button>
                 <span className={`num ml-auto text-[12px] ${daysLeft <= 2 ? 'font-medium text-bad' : 'text-muted'}`}>
-                  {a.type === 'subscribe' ? 'Nothing is charged until you confirm at PayPal' : daysLeft < 0 ? 'Charge date has passed' : daysLeft === 0 ? 'Decide today to avoid the charge' : `Decide by ${shortDate(a.deadline)} (${daysLeft}d)`}
+                  {a.type === 'subscribe' ? 'Nothing is charged yet' : daysLeft < 0 ? 'Charge date has passed' : daysLeft === 0 ? 'Decide today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
                 </span>
               </div>
             </li>
@@ -100,9 +100,9 @@ export function Inbox() {
             return (
               <li key={a.id} className="border-b border-white/[0.06] bg-accent-soft/60 px-4 py-3.5 last:border-b-0">
                 <h3 className="text-[14px] font-semibold">{a.title}: confirm at PayPal</h3>
-                <p className="mt-1 text-[13px] leading-relaxed">The agreement is created and waiting for you. PayPal asks you to approve it yourself; nothing is charged before that.</p>
+                <p className="mt-1 text-[13px] leading-relaxed">Approve it at PayPal to start. Nothing is charged before that.</p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                  <a href={a.approveUrl} className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
+                  <a href={a.approveUrl} className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
                     Continue to PayPal <ExternalLink size={13} className="ml-1 inline" aria-hidden="true" />
                   </a>
                   <button onClick={() => decide(a.id, 'reject')} disabled={busy === a.id} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[13px] hover:bg-white/[0.07] disabled:opacity-50">
@@ -114,13 +114,12 @@ export function Inbox() {
           }
           return (
             <li key={a.id} className="border-b border-white/[0.06] bg-warn-soft/40 px-4 py-3.5 last:border-b-0">
-              <h3 className="text-[14px] font-semibold">{a.title}: one step left for you</h3>
+              <h3 className="text-[14px] font-semibold">{a.title}: one step left</h3>
               <p className="mt-1 text-[13px] leading-relaxed">
-                {sub && !sub.paypalSubscriptionId ? `${sub.name} is not billed through PayPal, so PayPal cannot act on it.` : 'This one cannot be done for you through PayPal.'} Finish on the
-                official page, then confirm here.
+                Finish on {sub?.name ?? 'the provider'}&apos;s page, then confirm here.
               </p>
               <div className="mt-2.5 flex flex-wrap gap-2">
-                <a href={sub?.cancelUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
+                <a href={sub?.cancelUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
                   Open {sub?.name} account page <ExternalLink size={13} className="ml-1 inline" aria-hidden="true" />
                 </a>
                 <button onClick={() => decide(a.id, 'done')} disabled={busy === a.id} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[13px] hover:bg-white/[0.07] disabled:opacity-50">
@@ -134,7 +133,7 @@ export function Inbox() {
 
       {history.length > 0 && (
         <div className="border-t border-white/[0.06]">
-          <h3 className="px-4 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wide text-faint">Audit trail</h3>
+          <h3 className="px-4 pb-1 pt-3 text-[11px] font-medium text-faint">Audit trail</h3>
           <ul className="pb-2">
             {history.map((a) => (
               <li key={a.id} className="px-4">

@@ -53,7 +53,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <span className="hidden text-[11px] text-faint md:block">{item.hint}</span>
                 </span>
                 {item.href === '/' && pending > 0 && (
-                  <span className="num rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-canvas" aria-label={`${pending} waiting for you`}>
+                  <span className="num rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-white" aria-label={`${pending} waiting for you`}>
                     {pending}
                   </span>
                 )}
@@ -64,15 +64,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         <div className="mt-auto hidden space-y-2 border-t border-white/[0.06] px-5 py-4 text-[12px] md:block">
           <Status label="Bank" value={!integrations ? 'checking' : integrations.bank.link ? integrations.bank.link.institution : 'Not linked'} live={Boolean(integrations?.bank.link)} />
-          <Status label="PayPal" value={!integrations ? 'checking' : integrations.paypal === 'off' ? 'Not connected' : integrations.paypal === 'live' ? 'Live' : 'Sandbox'} live={integrations ? integrations.paypal !== 'off' : false} />
-          <Status label="Agent" value={!integrations ? 'checking' : integrations.agent === 'gemini' ? 'Gemini' : 'Rules engine'} live={integrations?.agent === 'gemini'} />
+          <Status label="PayPal" value={!integrations ? 'checking' : integrations.paypal === 'off' ? 'Not connected' : integrations.paypal === 'live' ? 'Live' : 'Test mode'} live={integrations ? integrations.paypal !== 'off' : false} />
+          <Status label="Assistant" value={!integrations ? 'checking' : integrations.agent === 'gemini' ? 'On' : 'Basic'} live={integrations?.agent === 'gemini'} />
         </div>
       </aside>
 
       <main className="min-h-0 min-w-0 flex-1 overflow-auto">
         {error && (
           <div role="alert" className="border-b border-bad/30 bg-bad-soft px-6 py-2 text-[13px] text-bad">
-            Could not reach the server: {error}
+            Reconnecting
           </div>
         )}
         {children}

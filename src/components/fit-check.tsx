@@ -1,10 +1,12 @@
-// "Is it right for me?" for one subscription: a few questions, then the fit-check agent's live
-// trace and its verdict. The finished check is stored on the server, so it is still here on the
-// next visit.
+// "Is it right for me?" for one subscription. It opens as a dialog that asks one question at a
+// time, lets the model ask a follow-up or two when the answers leave something open, shows the
+// agent working, and ends on the verdict. The finished check is stored on the server, so the
+// service panel keeps a summary of it.
 
 import { Link } from '@tanstack/react-router';
-import { Check, ExternalLink, HelpCircle, Minus, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ExternalLink, HelpCircle, Minus, Plus, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { money } from '@/domain/dates';
 import type { Currency, FitAlternative, FitCheck as FitCheckResult, FitQuestion, RunStep, StreamEvent, Subscription } from '@/domain/types';
 import { AppLogo } from './app-logo';
@@ -22,37 +24,108 @@ const BASIS: Record<FitAlternative['basis'], string> = { live: 'price read live'
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 const price = (amount: number, currency?: string) => (currency && CURRENCIES.includes(currency) ? money(amount, currency as Currency) : `${amount} ${currency ?? ''}`.trim());
 
+type Phase = 'loading' | 'asking' | 'thinking' | 'running' | 'verdict';
+
+/** The summary in the service panel, and the door to the dialog. */
 export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckResult }) {
-  const { refresh } = useApp();
-  const [questions, setQuestions] = useState<FitQuestion[] | null>(null);
+  const [open, setOpen] = useState<false | 'ask' | 'verdict'>(false);
+  return (
+    <div>
+      {check ? (
+        <div>
+          <span className={`inline-block rounded-full px-2.5 py-1 text-[12px] font-semibold ${VERDICT[check.verdict].tone}`}>{VERDICT[check.verdict].label}</span>
+          <p className="mt-2 text-[14px] font-semibold leading-snug">{check.headline}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">{check.recommendation.text}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button onClick={() => setOpen('verdict')} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+              See the full verdict
+            </button>
+            <button onClick={() => setOpen('ask')} className="rounded-lg border border-white/10 px-3 py-1.5 text-[13px] font-medium hover:bg-white/[0.07]">
+              Check again
+            </button>
+            <span className="text-[12px] text-faint">Checked {since(check.createdAt)}</span>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="text-[13px] leading-relaxed text-muted">A few quick questions, then the agent checks whether {sub.name} suits how you actually use it, looks up what it can live, and compares it with the alternatives.</p>
+          <button onClick={() => setOpen('ask')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
+            <Sparkles size={14} aria-hidden="true" /> Is {sub.name} right for me?
+          </button>
+        </div>
+      )}
+      {open && <FitDialog sub={sub} check={check} start={open} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function FitDialog({ sub, check, start, onClose }: { sub: Subscription; check?: FitCheckResult; start: 'ask' | 'verdict'; onClose: () => void }) {
+  const { refresh, state } = useApp();
+  const [phase, setPhase] = useState<Phase>(start === 'verdict' && check ? 'verdict' : 'loading');
+  const [questions, setQuestions] = useState<FitQuestion[]>([]);
+  const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [askedFollowUps, setAskedFollowUps] = useState(false);
   const [steps, setSteps] = useState<RunStep[]>([]);
-  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const dialog = useRef<HTMLDivElement>(null);
+  const latest = state?.fitChecks[sub.id] ?? check;
 
-  async function start() {
-    setError(null);
-    const res = await fetch(`/api/fit?subId=${encodeURIComponent(sub.id)}`);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(data.error ?? 'Could not load the questions');
-    setAnswers(check?.answers ?? {});
-    setQuestions(data.questions);
-  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // The dialog sits on top of the service panel; Escape closes only the dialog.
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    dialog.current?.focus();
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
 
-  async function run() {
-    setRunning(true);
+  useEffect(() => {
+    if (phase !== 'loading') return;
+    let cancelled = false;
+    fetch(`/api/fit?subId=${encodeURIComponent(sub.id)}`)
+      .then(async (res) => ({ ok: res.ok, data: (await res.json().catch(() => ({}))) as { questions?: FitQuestion[]; error?: string } }))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (!ok || !data.questions) return setError(data.error ?? 'Could not load the questions');
+        setQuestions(data.questions);
+        setPhase('asking');
+      })
+      .catch((e) => !cancelled && setError(String(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, sub.id]);
+
+  const question = questions[index];
+  const value = question ? (answers[question.id] ?? '') : '';
+  const chosen = value.split(question?.kind === 'titles' ? '\n' : ', ').filter(Boolean);
+  const set = (text: string) => question && setAnswers((current) => ({ ...current, [question.id]: text }));
+  const toggle = (option: string, limit = 99) => {
+    const next = chosen.includes(option) ? chosen.filter((o) => o !== option) : chosen.length < limit ? [...chosen, option] : chosen;
+    set(next.join(question?.kind === 'titles' ? '\n' : ', '));
+  };
+
+  async function run(all: FitQuestion[]) {
+    setPhase('running');
     setSteps([]);
     setError(null);
     try {
-      const res = await fetch('/api/fit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subId: sub.id, answers }) });
+      const followUps = all.filter((q) => q.id.startsWith('ai')).map((q) => ({ label: q.label, answer: answers[q.id] ?? '' }));
+      const base = Object.fromEntries(Object.entries(answers).filter(([id]) => !id.startsWith('ai')));
+      const res = await fetch('/api/fit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subId: sub.id, answers: base, followUps }) });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? 'The check could not start');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       for (;;) {
-        const { done, value } = await reader.read();
+        const { done, value: chunk } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(chunk, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
         for (const line of lines.filter(Boolean)) {
@@ -62,102 +135,242 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
         }
       }
       await refresh();
-      setQuestions(null);
+      setPhase('verdict');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setPhase('asking');
     }
-    setRunning(false);
   }
 
-  const set = (id: string, value: string) => setAnswers((current) => ({ ...current, [id]: value }));
-  const toggle = (id: string, option: string) => {
-    const chosen = (answers[id] ?? '').split(', ').filter(Boolean);
-    set(id, (chosen.includes(option) ? chosen.filter((o) => o !== option) : [...chosen, option]).join(', '));
+  async function next() {
+    setDraft('');
+    if (index < questions.length - 1) return setIndex(index + 1);
+    // The standard questions are done: let the model ask what it still needs, once.
+    if (!askedFollowUps) {
+      setAskedFollowUps(true);
+      setPhase('thinking');
+      const base = Object.fromEntries(Object.entries(answers).filter(([id]) => !id.startsWith('ai')));
+      const more = await fetch('/api/fit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subId: sub.id, answers: base, step: 'followups' }) })
+        .then((res) => res.json() as Promise<{ questions?: FitQuestion[] }>)
+        .then((data) => data.questions ?? [])
+        .catch(() => []);
+      if (more.length > 0) {
+        setQuestions([...questions, ...more]);
+        setIndex(index + 1);
+        return setPhase('asking');
+      }
+    }
+    await run(questions);
+  }
+
+  const addTitle = () => {
+    const title = draft.trim();
+    if (title && !chosen.includes(title) && chosen.length < 6) set([...chosen, title].join('\n'));
+    setDraft('');
   };
 
-  if (running) {
-    return (
-      <div>
-        <p className="flex items-center gap-2 text-[13px] font-medium">
-          <Sparkles size={14} className="animate-pulse text-accent" aria-hidden="true" /> Checking {sub.name} against your answers
-        </p>
-        <ol className="mt-2.5 space-y-1.5 border-l border-white/10 pl-3.5 text-[12px]" aria-live="polite">
-          {steps.map((step, i) => (
-            <li key={i} className={step.kind === 'thought' ? 'text-faint' : 'text-muted'}>
-              {step.title}
-            </li>
-          ))}
-          <li className="text-faint">Working. Live lookups can take up to a minute.</li>
-        </ol>
-      </div>
-    );
-  }
+  const total = Math.max(questions.length, 1);
+  const progress = phase === 'verdict' ? 1 : phase === 'running' || phase === 'thinking' ? 0.92 : (index + (value ? 0.6 : 0.15)) / (total + 1);
+  const followUp = question?.id.startsWith('ai');
 
-  if (questions) {
-    return (
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run();
-        }}
+  // Rendered on the page itself: inside the service panel, the panel's own animation would clip it.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Is ${sub.name} right for you?`}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        style={{ outline: 'none' }}
+        className="rise flex max-h-[min(720px,92vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[#080b18] shadow-2xl"
       >
-        {questions.map((q) => (
-          <fieldset key={q.id}>
-            <legend className="text-[13px] font-medium leading-snug">{q.label}</legend>
-            {q.hint && <p className="mt-0.5 text-[12px] text-faint">{q.hint}</p>}
-            {q.kind === 'titles' && <textarea value={answers[q.id] ?? ''} onChange={(e) => set(q.id, e.target.value)} rows={4} placeholder={'Stranger Things\nInterstellar'} aria-label={q.label} className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[13px] placeholder:text-faint" />}
-            {q.kind === 'text' && <input value={answers[q.id] ?? ''} onChange={(e) => set(q.id, e.target.value)} aria-label={q.label} className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[13px]" />}
-            {q.kind === 'number' && <input value={answers[q.id] ?? ''} onChange={(e) => set(q.id, e.target.value)} inputMode="decimal" aria-label={q.label} className="num mt-2 w-32 rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[13px]" />}
-            {(q.kind === 'choice' || q.kind === 'multi') && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {q.options?.map((option) => {
-                  const on = q.kind === 'choice' ? answers[q.id] === option : (answers[q.id] ?? '').split(', ').includes(option);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => (q.kind === 'choice' ? set(q.id, on ? '' : option) : toggle(q.id, option))}
-                      className={`rounded-full border px-2.5 py-1 text-[12px] font-medium ${on ? 'border-accent bg-accent-soft text-accent' : 'border-white/10 text-muted hover:text-ink'}`}
-                    >
-                      {option}
+        <header className="brand-blue relative px-6 pb-5 pt-5 text-white">
+          <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 rounded-full bg-black/20 p-1.5 hover:bg-black/35">
+            <X size={16} />
+          </button>
+          <div className="flex items-center gap-3">
+            <AppLogo providerId={sub.providerId} category={sub.category} color={sub.color} size={44} />
+            <div>
+              <p className="text-[11px] font-semibold text-white/75">Fit check</p>
+              <h2 className="text-[19px] font-semibold tracking-tight">Is {sub.name} right for you?</h2>
+            </div>
+          </div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+            <div className="h-full rounded-full bg-sun transition-[width] duration-500" style={{ width: `${Math.round(progress * 100)}%` }} />
+          </div>
+        </header>
+
+        <div className="min-h-[300px] flex-1 overflow-y-auto px-6 py-6">
+          {error && (
+            <p role="alert" className="mb-4 rounded-xl bg-bad-soft px-3 py-2 text-[13px] text-bad">
+              {error}
+            </p>
+          )}
+
+          {phase === 'loading' && !error && <p className="text-[14px] text-muted">Getting your questions ready</p>}
+
+          {phase === 'asking' && question && (
+            <div key={question.id} className="rise">
+              <p className="text-[12px] font-medium text-faint">
+                {followUp ? (
+                  <span className="inline-flex items-center gap-1.5 text-accent">
+                    <Sparkles size={13} aria-hidden="true" /> One more thing, based on your answers
+                  </span>
+                ) : (
+                  `Question ${index + 1} of ${questions.filter((q) => !q.id.startsWith('ai')).length}`
+                )}
+              </p>
+              <h3 className="mt-1.5 text-[19px] font-semibold leading-snug tracking-[-0.01em]">{question.label}</h3>
+              {question.hint && <p className="mt-1.5 text-[13px] text-muted">{question.hint}</p>}
+
+              {question.kind === 'titles' && (
+                <div className="mt-4">
+                  {chosen.length > 0 && (
+                    <ul className="mb-3 flex flex-wrap gap-2" aria-label="Your picks">
+                      {chosen.map((title) => (
+                        <li key={title}>
+                          <button onClick={() => toggle(title)} className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-[13px] font-semibold text-white" aria-label={`Remove ${title}`}>
+                            {title} <X size={13} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <form
+                    className="flex gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      addTitle();
+                    }}
+                  >
+                    <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a film or series name" aria-label="Add a title" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-[14px] placeholder:text-faint" />
+                    <button type="submit" disabled={!draft.trim() || chosen.length >= 6} className="flex items-center gap-1 rounded-xl border border-white/10 px-3 text-[13px] font-medium hover:bg-white/[0.07] disabled:opacity-40">
+                      <Plus size={14} aria-hidden="true" /> Add
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </fieldset>
-        ))}
-        {error && (
-          <p role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">
-            {error}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
-            Check it for me
-          </button>
-          <button type="button" onClick={() => setQuestions(null)} className="rounded-lg border border-white/10 px-3 py-1.5 text-[13px] hover:bg-white/[0.07]">
-            Not now
-          </button>
+                  </form>
+                  {question.suggestions && question.suggestions.length > 0 && (
+                    <>
+                      <p className="mb-2 mt-4 text-[12px] text-faint">Popular on {sub.name} right now. Tap any you care about.</p>
+                      <ul className="flex flex-wrap gap-2">
+                        {question.suggestions
+                          .filter((title) => !chosen.includes(title))
+                          .slice(0, 16)
+                          .map((title) => (
+                            <li key={title}>
+                              <button onClick={() => toggle(title, 6)} disabled={chosen.length >= 6} className="rounded-full border border-white/10 px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-ink disabled:opacity-40">
+                                {title}
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {(question.kind === 'choice' || question.kind === 'multi') && (
+                <div className="mt-4 grid gap-2" role={question.kind === 'choice' ? 'radiogroup' : 'group'}>
+                  {question.options?.map((option) => {
+                    const on = question.kind === 'choice' ? value === option : chosen.includes(option);
+                    return (
+                      <button
+                        key={option}
+                        role={question.kind === 'choice' ? 'radio' : 'checkbox'}
+                        aria-checked={on}
+                        onClick={() => (question.kind === 'choice' ? set(on ? '' : option) : toggle(option))}
+                        className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-[14px] font-medium transition-colors ${on ? 'border-accent bg-accent-soft text-ink' : 'border-white/10 hover:border-white/25 hover:bg-white/[0.04]'}`}
+                      >
+                        {option}
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${question.kind === 'choice' ? 'rounded-full' : 'rounded-md'} border ${on ? 'border-accent bg-accent text-white' : 'border-white/25'}`}>{on && <Check size={13} strokeWidth={3} aria-hidden="true" />}</span>
+                      </button>
+                    );
+                  })}
+                  {question.kind === 'multi' && <p className="text-[12px] text-faint">Pick as many as apply.</p>}
+                </div>
+              )}
+
+              {question.kind === 'text' && <textarea value={value} onChange={(e) => set(e.target.value)} rows={3} aria-label={question.label} placeholder="In your own words" className="mt-4 w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-[14px] placeholder:text-faint" />}
+              {question.kind === 'number' && (
+                <div className="mt-4 flex items-center gap-2">
+                  <input value={value} onChange={(e) => set(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" aria-label={question.label} className="num w-36 rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-[18px] font-semibold" />
+                  <span className="text-[14px] text-muted">GB</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {phase === 'thinking' && (
+            <div className="flex items-center gap-3 text-[14px]">
+              <Sparkles size={18} className="animate-pulse text-accent" aria-hidden="true" /> Reading your answers to see if anything is still unclear
+            </div>
+          )}
+
+          {phase === 'running' && (
+            <div>
+              <p className="flex items-center gap-2 text-[15px] font-semibold">
+                <Sparkles size={16} className="animate-pulse text-accent" aria-hidden="true" /> Checking {sub.name} for you
+              </p>
+              <ol className="mt-3 space-y-2 border-l border-white/10 pl-4 text-[13px]" aria-live="polite">
+                {steps.map((step, i) => (
+                  <li key={i} className={`rise ${step.kind === 'thought' ? 'text-faint' : 'text-muted'}`}>
+                    {step.title}
+                  </li>
+                ))}
+                <li className="text-faint">Working. Live lookups can take up to a minute.</li>
+              </ol>
+            </div>
+          )}
+
+          {phase === 'verdict' && latest && <FitResult sub={sub} check={latest} />}
         </div>
-      </form>
-    );
-  }
 
-  if (!check) {
-    return (
-      <div>
-        <p className="text-[13px] leading-relaxed text-muted">Answer a few questions and the agent checks whether {sub.name} suits how you actually use it, looks up live what it can, and compares it with the alternatives.</p>
-        {error && <p className="mt-2 text-[13px] text-bad">{error}</p>}
-        <button onClick={start} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
-          <Sparkles size={14} aria-hidden="true" /> Is {sub.name} right for me?
-        </button>
+        <footer className="flex items-center justify-between gap-3 border-t border-white/[0.07] px-6 py-4">
+          {phase === 'asking' ? (
+            <>
+              <button onClick={() => (index > 0 ? setIndex(index - 1) : onClose())} className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium text-muted hover:bg-white/[0.06] hover:text-ink">
+                <ArrowLeft size={14} aria-hidden="true" /> {index > 0 ? 'Back' : 'Not now'}
+              </button>
+              <div className="flex items-center gap-2">
+                {!value && (
+                  <button onClick={next} className="rounded-xl px-3 py-2 text-[13px] font-medium text-muted hover:bg-white/[0.06] hover:text-ink">
+                    Skip
+                  </button>
+                )}
+                <button onClick={next} disabled={!value} className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
+                  {index < questions.length - 1 || !askedFollowUps ? 'Continue' : 'Get my verdict'} <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              </div>
+            </>
+          ) : phase === 'verdict' ? (
+            <>
+              <button
+                onClick={() => {
+                  setIndex(0);
+                  setAskedFollowUps(false);
+                  setAnswers(Object.fromEntries(Object.entries(latest?.answers ?? {}).filter(([id]) => !id.startsWith('ai'))));
+                  setPhase('loading');
+                }}
+                className="rounded-xl px-3 py-2 text-[13px] font-medium text-muted hover:bg-white/[0.06] hover:text-ink"
+              >
+                Answer again
+              </button>
+              <button onClick={onClose} className="rounded-xl bg-accent px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90">
+                Done
+              </button>
+            </>
+          ) : (
+            <span className="text-[12px] text-faint">{phase === 'running' ? 'You can close this. The verdict is saved when it is ready.' : ''}</span>
+          )}
+        </footer>
       </div>
-    );
-  }
+    </div>,
+    document.body,
+  );
+}
 
+function FitResult({ sub, check }: { sub: Subscription; check: FitCheckResult }) {
   const verdict = VERDICT[check.verdict];
   const known = check.titles.filter((t) => t.found);
   return (
@@ -183,7 +396,7 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
 
       {check.titles.length > 0 && (
         <div>
-          <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">What you want to watch</h4>
+          <h4 className="text-[11px] font-medium text-faint">What you want to watch</h4>
           <ul className="mt-2 space-y-2">
             {check.titles.map((t) => {
               const elsewhere = t.offers.filter((o) => o.kind === 'stream').map((o) => o.provider);
@@ -220,7 +433,7 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
 
       {check.alternatives.length > 0 && (
         <div>
-          <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Alternatives</h4>
+          <h4 className="text-[11px] font-medium text-faint">Alternatives</h4>
           <ul className="mt-2 space-y-2">
             {check.alternatives.map((a) => (
               <li key={`${a.name}-${a.plan}`} className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] px-3 py-2.5">
@@ -248,7 +461,7 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
       )}
 
       <div>
-        <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">What this rests on</h4>
+        <h4 className="text-[11px] font-medium text-faint">What this rests on</h4>
         <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-muted">
           {check.basis.map((line) => (
             <li key={line}>{line}</li>
@@ -265,14 +478,9 @@ export function FitCheck({ sub, check }: { sub: Subscription; check?: FitCheckRe
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[12px] text-faint">
-          Checked {since(check.createdAt)} by {check.engine === 'gemini' ? 'the agent' : 'the built-in rules'}
-        </span>
-        <button onClick={start} className="rounded-lg border border-white/10 px-3 py-1.5 text-[12px] font-medium hover:bg-white/[0.07]">
-          Check again
-        </button>
-      </div>
+      <p className="text-[12px] text-faint">
+        Checked {since(check.createdAt)} by {check.engine === 'gemini' ? 'the agent' : 'the built-in rules'}
+      </p>
     </div>
   );
 }

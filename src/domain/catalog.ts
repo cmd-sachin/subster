@@ -73,15 +73,15 @@ export const CATALOG: Provider[] = [
   p('SonyLIV', 'Streaming', /sony\s*liv|sonyliv|culver max/i, 'https://www.sonyliv.com/usercenter/subscription', '#7a5ab8', [['Premium', 399, 'monthly', 'INR'], ['Premium annual', 1499, 'yearly', 'INR']], 'com.sonyliv'),
   p('Airtel Xstream Play', 'Streaming', /airtel xstream play|xstream play/i, 'https://www.airtelxstream.in/account', '#c44545', [['Premium', 149, 'monthly', 'INR']], 'tv.accedo.airtel.wynk'),
   p('ZEE5', 'Streaming', /zee5|zee entertainment/i, 'https://www.zee5.com/myaccount/subscription', '#8a4fbf', [], 'com.graymatrix.did'),
-  p('YouTube Premium', 'Streaming', /youtube\s*premium|google.*youtube/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 13.99], ['Family', 22.99], ['Individual', 149, 'monthly', 'INR'], ['Family', 299, 'monthly', 'INR']], 'com.google.android.youtube'),
+  p('YouTube Premium', 'Streaming', /youtube\s*premium|google.*youtube/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 13.99], ['Family', 22.99], ['Student', 89, 'monthly', 'INR'], ['Individual', 149, 'monthly', 'INR'], ['Family', 299, 'monthly', 'INR']], 'com.google.android.youtube'),
   p('Hulu', 'Streaming', /hulu/i, 'https://secure.hulu.com/account', '#3f9e6b', [['With ads', 9.99], ['No ads', 18.99]], 'com.hulu.plus'),
   p('Max', 'Streaming', /\bhbo\b|\bmax\.com|hbomax/i, 'https://auth.max.com/subscription', '#5b55c9', [['With ads', 9.99], ['Ad-free', 16.99]], 'com.wbd.stream'),
   p('Apple TV+', 'Streaming', /apple\s*tv/i, 'https://tv.apple.com/settings', '#6b7a8f', [['Monthly', 9.99], ['Monthly', 99, 'monthly', 'INR']], 'com.apple.atve.androidtv.appletv'),
   p('Crunchyroll', 'Streaming', /crunchyroll/i, 'https://www.crunchyroll.com/account/membership', '#c9772f', [['Fan', 7.99], ['Mega Fan', 11.99], ['Fan', 79, 'monthly', 'INR'], ['Mega Fan', 99, 'monthly', 'INR']], 'com.crunchyroll.crunchyroid'),
 
   // Music and audio
-  p('Spotify', 'Music', /spotify/i, 'https://www.spotify.com/account/subscription/', '#2f9e6b', [['Premium Individual', 11.99], ['Premium Duo', 16.99], ['Premium Family', 19.99], ['Premium Lite', 139, 'monthly', 'INR'], ['Premium Standard', 199, 'monthly', 'INR'], ['Premium Platinum', 299, 'monthly', 'INR']], 'com.spotify.music', { type: 'oauth', provider: 'spotify' }),
-  p('Apple Music', 'Music', /apple music|apple\.com\/bill/i, 'https://music.apple.com/account', '#c2477f', [['Individual', 10.99], ['Family', 16.99], ['Student', 59, 'monthly', 'INR'], ['Individual', 119, 'monthly', 'INR'], ['Family', 179, 'monthly', 'INR']], 'com.apple.android.music'),
+  p('Spotify', 'Music', /spotify/i, 'https://www.spotify.com/account/subscription/', '#2f9e6b', [['Premium Individual', 11.99], ['Premium Duo', 16.99], ['Premium Family', 19.99], ['Premium Student', 69, 'monthly', 'INR'], ['Premium Standard', 139, 'monthly', 'INR'], ['Premium Platinum', 299, 'monthly', 'INR']], 'com.spotify.music', { type: 'oauth', provider: 'spotify' }),
+  p('Apple Music', 'Music', /apple music|apple\.com\/bill/i, 'https://music.apple.com/account', '#c2477f', [['Individual', 10.99], ['Family', 16.99], ['Student', 69, 'monthly', 'INR'], ['Individual', 139, 'monthly', 'INR'], ['Family', 229, 'monthly', 'INR']], 'com.apple.android.music'),
   p('YouTube Music', 'Music', /youtube music/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 10.99]], 'com.google.android.apps.youtube.music'),
   p('JioSaavn', 'Music', /saavn/i, 'https://www.jiosaavn.com/me/account', '#3f9e8a', [['Pro', 99, 'monthly', 'INR']], 'com.jio.media.jiobeats'),
   p('Audible', 'Learning', /audible/i, 'https://www.audible.com/account/overview', '#c9882f', [['Premium Plus', 14.95], ['Membership', 199, 'monthly', 'INR']], 'com.audible.application'),

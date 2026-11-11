@@ -41,7 +41,7 @@ export function unlinkAccount(providerId: string) {
 
 /** Where to send the user to sign in to Spotify. `state` guards the callback against forgery. */
 export function spotifyAuthorizeUrl(origin: string) {
-  if (!spotifyConfigured()) throw new HttpError(503, 'Spotify sign-in needs SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.local.');
+  if (!spotifyConfigured()) throw new HttpError(503, 'Spotify sign-in is not available yet.');
   const state = crypto.randomUUID();
   db().oauthState = state;
   save('oauth started');

@@ -2,6 +2,7 @@
 // so the run trace in the UI is the complete record of what the agent looked at and did.
 
 import { CATALOG, catalogPlans, CATEGORY_LABEL } from '@/domain/catalog';
+import { acceptsPayPal, PAYPAL_ACCEPTANCE } from '@/domain/paypal-acceptance.gen';
 import { livePlansForRegion } from '@/server/services/plans';
 import { createProposal, proposeSubscription } from '@/server/services/actions';
 import { log } from '@/server/logger';
@@ -130,6 +131,7 @@ const compact = (i: Insight) => ({
   paypal_managed: Boolean(i.sub.paypalSubscriptionId),
   policy: i.sub.policy,
   usage_coverage: i.sub.coverage,
+  ...(i.keptByChoice && { user_declined: `${i.keptByChoice.type} on ${i.keptByChoice.at.slice(0, 10)}; nothing has changed since, so do not propose it again` }),
   hours_last_30d: i.hours30,
   hours_prev_30d: i.hoursPrev30,
   trend_pct: i.trendPct,
@@ -267,6 +269,8 @@ export async function runTool(name: string, input: Record<string, unknown>, runI
               plans: official ? live.plans : listed,
               plans_source: official ? `official site, checked ${live.checkedAt}` : listed.some((p) => p.currency === currentCurrency()) ? 'catalog (list prices for the user\'s region, not live)' : 'catalog (US list prices, not live)',
               subscribed: Boolean(mine),
+              // From the provider's own help pages; absent when it could not be confirmed either way.
+              ...(acceptsPayPal(app.id, currentCurrency()) !== undefined && { accepts_paypal: acceptsPayPal(app.id, currentCurrency()), accepts_paypal_source: PAYPAL_ACCEPTANCE[app.id].source }),
               your_plan: mine?.plan,
               account_page: app.manageUrl,
             };

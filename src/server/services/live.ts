@@ -10,6 +10,7 @@ import type { BillingCycle, Currency, LivePlan } from '@/domain/types';
 import { generate, llmAvailable, textOf } from '@/server/llm';
 import { log } from '@/server/logger';
 import { db } from '@/server/store';
+import { canScrapePrices, scrapePrices, scrapeTitle } from './scrape';
 
 const CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -25,7 +26,8 @@ function remember(id: string, value: unknown) {
   for (const [key, entry] of Object.entries(cache)) if (Date.now() - Date.parse(entry.at) > CACHE_MS) delete cache[key];
 }
 
-export const liveAvailable = () => llmAvailable();
+/** Direct page reading needs no model, so live lookups are always possible for the pages it covers. */
+export const liveAvailable = () => true;
 
 const key = (url: string) => {
   try {
@@ -107,14 +109,31 @@ export async function titleAvailability(titles: string[], currency: Currency): P
   const country = JUSTWATCH_COUNTRY[currency];
   const cacheId = (title: string) => `title:${country}:${slug(title)}`;
   const known = new Map(wanted.map((title) => [title, cached<TitleAvailability>(cacheId(title))] as const).filter((entry): entry is [string, TitleAvailability] => entry[1] !== undefined));
+  // Read each title's page directly. The model is asked only about titles that could not be read that way.
+  for (const title of wanted.filter((t) => !known.has(t))) {
+    const direct = await scrapeTitle(title, currency);
+    if (!direct) continue;
+    const result: TitleAvailability = { title: direct.title, found: true, url: direct.url, offers: direct.offers };
+    remember(cacheId(title), result);
+    known.set(title, result);
+  }
   const missing = wanted.filter((title) => !known.has(title));
-  if (missing.length === 0) return wanted.map((title) => known.get(title)!);
+  if (missing.length === 0 || !llmAvailable()) return wanted.map((title) => known.get(title) ?? { title, found: false, offers: [] });
   // The address of a title's page is its name; whether it is a film or a series is not known in advance, so both are tried.
   const candidates = missing.flatMap((title) => ['movie', 'tv-show'].map((type) => ({ title, url: `https://www.justwatch.com/${country}/${type}/${slug(title)}` })));
-  const { items, loaded } = await readPages<RawTitle>(
+  // The model is only a second attempt: if it is unavailable, what was read directly still stands.
+  const { items, loaded } = await (async () => {
+    try {
+      return await readPages<RawTitle>(
     candidates.map((c) => c.url),
     `Each page below may be the JustWatch page for one of these titles: ${missing.map((t) => `"${t}"`).join(', ')}. For every page that loaded, return {"url": the page address, "is_about_title": true only if the page is about that film or series, "title": the title as the page names it, "offers": [{"provider": string, "kind": "stream" | "rent" | "buy", "price": number or null, "currency": ISO code or null, "quality": "SD" | "HD" | "4K" or null}]}. "stream" means included in a subscription; for those the price is the subscription's monthly price if shown. List each provider once per kind, at its cheapest price.`,
   );
+    } catch (error) {
+      log.warn('live', 'Model lookup of titles failed', { error: error instanceof Error ? error.message.slice(0, 160) : String(error) });
+      return { items: [] as RawTitle[], loaded: new Set<string>() };
+    }
+  })();
+
 
   return wanted.map((title) => {
     if (known.has(title)) return known.get(title)!;
@@ -170,15 +189,31 @@ const REGION_NAME: Record<Currency, string> = { INR: 'India', USD: 'the United S
 
 /** Reads the official price page of each provider that has one. Providers whose page did not load are left out. */
 export async function livePricing(providerIds: string[], currency: Currency): Promise<LivePricing[]> {
-  const all = [...new Set(providerIds)].filter((id) => PRICING_PAGES[id]).slice(0, 8);
+  const all = [...new Set(providerIds)].filter((id) => PRICING_PAGES[id] || canScrapePrices(id, currency)).slice(0, 10);
   const priceId = (id: string) => `prices:${currency}:${id}`;
   const results: LivePricing[] = all.map((id) => cached<LivePricing>(priceId(id))).filter((hit): hit is LivePricing => hit !== undefined);
-  const pages = all.filter((id) => !results.some((r) => r.providerId === id)).map((id) => ({ id, url: PRICING_PAGES[id] }));
-  if (pages.length === 0) return results;
-  const { items, loaded } = await readPages<RawPricing>(
+  // Price pages with a parser are read directly. The model reads only the pages that have none.
+  for (const id of all.filter((id) => !results.some((r) => r.providerId === id) && canScrapePrices(id, currency))) {
+    const direct = await scrapePrices(id, currency);
+    if (!direct) continue;
+    const result: LivePricing = { providerId: id, url: direct.url, plans: direct.plans };
+    remember(priceId(id), result);
+    results.push(result);
+  }
+  const pages = all.filter((id) => !results.some((r) => r.providerId === id) && PRICING_PAGES[id]).map((id) => ({ id, url: PRICING_PAGES[id] }));
+  if (pages.length === 0 || !llmAvailable()) return results;
+  const { items, loaded } = await (async () => {
+    try {
+      return await readPages<RawPricing>(
     pages.map((p) => p.url),
     `For every page that loaded, list the paid plans it sells to individual consumers as {"url": the page address, "plans": [{"name": string, "price": number, "currency": "INR" | "USD" | "EUR" | "GBP", "cycle": "monthly" | "quarterly" | "yearly", "features": the main thing the plan gives in a few words, such as the storage size or usage limits}]}. Prefer the price for ${REGION_NAME[currency]} in ${currency} when the page shows it; otherwise report the currency the page shows. Never convert currencies. Skip free, business and enterprise plans.`,
   );
+    } catch (error) {
+      log.warn('live', 'Model reading of price pages failed', { error: error instanceof Error ? error.message.slice(0, 160) : String(error) });
+      return { items: [] as RawPricing[], loaded: new Set<string>() };
+    }
+  })();
+
   for (const page of pages) {
     const hit = items.find((item) => item.url && key(item.url) === key(page.url));
     // A redirect changes the address, so a loaded page on the same site also counts.

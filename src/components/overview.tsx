@@ -20,21 +20,10 @@ export function MetricStrip({ portfolio: p }: { portfolio: Portfolio }) {
   const lowShare = p.monthlySpend ? Math.round((p.wastedMonthly / p.monthlySpend) * 100) : 0;
 
   const metrics = [
-    { label: 'Monthly spend', value: money(p.monthlySpend), note: `${money(Math.round(p.yearlySpend))} a year across ${p.activeCount} subscriptions` },
-    {
-      label: 'You could save',
-      value: money(p.potentialSavingsMonthly),
-      suffix: '/mo',
-      tone: p.potentialSavingsMonthly > 0 ? 'text-accent' : '',
-      note: p.wastedMonthly > 0 ? `${money(p.wastedMonthly)} (${lowShare}%) goes to low-value subscriptions` : 'Nothing flagged as low value',
-    },
-    { label: 'Charging in 30 days', value: money(p.next30Total), note: next ? `Next: ${next.name}, ${shortDate(next.date)}` : 'Nothing scheduled' },
-    {
-      label: 'Usage measured',
-      value: `${measured}`,
-      suffix: ` of ${scorable}`,
-      note: measured === scorable ? 'Every scorable subscription has usage data' : 'Install the Android companion to measure the rest',
-    },
+    { label: 'Every month', value: money(p.monthlySpend), note: `${p.activeCount} subscriptions` },
+    { label: 'You could save', value: money(p.potentialSavingsMonthly), suffix: '/mo', tone: p.potentialSavingsMonthly > 0 ? 'text-good' : '', note: p.wastedMonthly > 0 ? `${lowShare}% goes to things you barely use` : 'Nothing flagged' },
+    { label: 'Due in 30 days', value: money(p.next30Total), note: next ? `Next: ${next.name}, ${shortDate(next.date)}` : 'Nothing scheduled' },
+    { label: 'Usage measured', value: `${measured}`, suffix: ` of ${scorable}`, note: measured === scorable ? 'All covered' : 'Connect usage to cover the rest' },
   ];
 
   return (
@@ -42,7 +31,7 @@ export function MetricStrip({ portfolio: p }: { portfolio: Portfolio }) {
       {metrics.map((m) => (
         <div key={m.label} className="px-5 py-4">
           <dt className="eyebrow">{m.label}</dt>
-          <dd className={`num mt-2 text-[28px] font-semibold leading-none tracking-[-0.02em] ${m.tone ?? ''}`}>
+          <dd className={`num mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] ${m.tone ?? ''}`}>
             {m.value}
             {m.suffix && <span className="text-[15px] font-medium text-faint">{m.suffix}</span>}
           </dd>
@@ -93,7 +82,7 @@ export function UsageTrend({ portfolio: p }: { portfolio: Portfolio }) {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-5 py-3.5">
         <div>
           <h2 className="text-[14px] font-semibold">Usage, last 12 weeks</h2>
-          <p className="text-[12px] text-muted">Hours per week on your phone and browser, split by whether the subscription earns its cost.</p>
+          <p className="text-[12px] text-muted">Hours a week, on your phone and browser.</p>
         </div>
         <ul className="flex gap-4 text-[12px] text-muted">
           <li className="flex items-center gap-1.5">

@@ -24,6 +24,7 @@ How you work:
 - Every number you state comes from a tool result. Start with list_subscriptions; call get_subscription_detail before proposing anything for a subscription.
 - You act through propose_action. You cannot cancel or pause anything yourself: the user approves each proposal, and only then is it executed (through the PayPal API for PayPal-managed agreements, or by guiding the user to the merchant's page otherwise). The one exception is a subscription whose policy is "auto", where the user has pre-approved reversible pauses.
 - Never propose changes to a subscription whose policy is "locked".
+- Respect earlier decisions. A subscription marked user_declined was offered that change and the user said no; leave it alone and do not argue the point again. It is cleared automatically when the price or their usage changes.
 - Usage is time measured on the devices named in usage_coverage: "phone" is foreground time in the Android app, "web" is time on the service's site in the user's browser. For a video service whose coverage does not include "tv", TV viewing is invisible to you, so say that in the reason and prefer the reversible option. If the evidence is too thin to act on, use schedule_review instead of proposing.
 - Prefer the least drastic action that fixes the problem: downgrade when a cheaper plan fits the usage, pause when heavy use dropped recently, cancel when something is unused or duplicated, or a trial is about to convert unused.
 - Deadlines matter. Deal first with whatever charges soonest.
@@ -227,7 +228,7 @@ async function rulesWorkflow(run: AgentRun, options: RunOptions, record: (s: Omi
 async function answerFromFacts(question: string, call: (name: string, input?: Record<string, unknown>) => Promise<{ result: unknown }>) {
   const q = question.toLowerCase();
   const portfolio = analyze(db());
-  const note = '\n\n(Running on the built-in rules engine. Add GEMINI_API_KEY to .env.local for free-form questions.)';
+  const note = '';
 
   // "subscribe to spotify duo", "sign up for netflix", "start chatgpt plus"
   if (/\b(subscribe|sign ?up|start|get|buy)\b/.test(q)) {

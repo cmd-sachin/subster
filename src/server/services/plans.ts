@@ -18,6 +18,7 @@ import { HttpError } from '@/server/http';
 import { describeLlmError, generate, llmAvailable, textOf } from '@/server/llm';
 import { log } from '@/server/logger';
 import { livePricing, PRICING_PAGES } from './live';
+import { canScrapePrices, hasRegionalPage, scrapedProviders } from './scrape';
 import { db, save } from '@/server/store';
 
 const CURRENCIES: Currency[] = ['USD', 'INR', 'EUR', 'GBP'];
@@ -25,6 +26,7 @@ const CYCLES: BillingCycle[] = ['monthly', 'quarterly', 'yearly'];
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 const MONITOR_EVERY_MS = 6 * 60 * 60 * 1000;
 
+/** Whether prices can be searched for with the model. Reading known price pages directly never needs it. */
 export const planMonitorAvailable = () => llmAvailable();
 
 /**
@@ -34,7 +36,8 @@ export const planMonitorAvailable = () => llmAvailable();
 export function livePlansForRegion(): Record<string, LivePlans> {
   const data = db();
   const region = REGION[data.settings.currency];
-  return Object.fromEntries(Object.entries(data.livePlans).filter(([, live]) => live.region === region));
+  // A provider with no price page for this region is shown from its US page, in dollars and labelled so.
+  return Object.fromEntries(Object.entries(data.livePlans).filter(([id, live]) => live.region === region || (live.region === REGION.USD && !hasRegionalPage(id, data.settings.currency))));
 }
 
 /** The provider's registrable domain: where plan data has to come from. */
@@ -94,7 +97,8 @@ function parsePlans(text: string, domain: string[]): { plans: LivePlan[]; source
 export async function refreshPlans(providerId: string): Promise<LivePlans> {
   const provider = providerById(providerId);
   if (!provider) throw new HttpError(404, 'Unknown service');
-  if (!planMonitorAvailable()) throw new HttpError(503, 'Live plan checks need GEMINI_API_KEY in .env.local. Until then the catalog prices are shown.');
+  const direct = canScrapePrices(providerId, db().settings.currency);
+  if (!direct && !planMonitorAvailable()) throw new HttpError(503, `Live prices for ${provider.name} are not available yet.`);
 
   const data = db();
   const currency = data.settings.currency;
@@ -106,7 +110,7 @@ export async function refreshPlans(providerId: string): Promise<LivePlans> {
   const started = performance.now();
 
   // Where the provider's price page is known, it is read directly: one request, no search quota.
-  if (PRICING_PAGES[providerId]) {
+  if (direct || PRICING_PAGES[providerId]) {
     const [page] = await livePricing([providerId], currency).catch(() => []);
     if (page) {
       const changes = previous?.status === 'ok' ? diffPlans(previous.plans, page.plans) : [];
@@ -114,7 +118,8 @@ export async function refreshPlans(providerId: string): Promise<LivePlans> {
         providerId,
         status: 'ok',
         plans: page.plans.map(({ name, price, currency: planCurrency, cycle, features }) => ({ name, price, currency: planCurrency, cycle, ...(features && { note: features }) })),
-        region,
+        // A provider without a page for this region is read from its US page, in dollars.
+        region: page.plans.some((p) => p.currency === currency) ? region : REGION.USD,
         sourceUrls: [page.url],
         checkedAt: new Date().toISOString(),
         ...(changes.length > 0 ? { changes, changedAt: new Date().toISOString() } : previous?.changes && { changes: previous.changes, changedAt: previous.changedAt }),
@@ -173,8 +178,9 @@ Reply with one JSON object and nothing else:
     return result;
   } catch (error) {
     // Search grounding has its own quota, which on a free-tier key is often zero.
-    const quota = error instanceof ApiError && error.status === 429;
-    const message = quota ? 'Gemini refused the search (quota exceeded). Google Search grounding is usually not included in the free tier: enable billing on the key at aistudio.google.com, then try again.' : describeLlmError(error);
+    // Why it failed is logged below; the page only needs to know it did.
+    const message = `The official ${provider.name} site could not be read just now.`;
+    const reason = error instanceof ApiError ? `${error.status} ${error.message.slice(0, 200)}` : describeLlmError(error);
     // A failed check keeps the last good plans, marked with why the newest check failed.
     data.livePlans[providerId] = {
       ...(previous ?? { providerId, plans: [], region, sourceUrls: [] }),
@@ -184,7 +190,7 @@ Reply with one JSON object and nothing else:
       lastAttemptAt: new Date().toISOString(),
     };
     save('plan check failed');
-    log.error('plans', `${provider.name}: plan check failed`, { domain, error: message, ms: Math.round(performance.now() - started) });
+    log.error('plans', `${provider.name}: plan check failed`, { domain, error: reason, ms: Math.round(performance.now() - started) });
     throw new HttpError(502, message);
   }
 }
@@ -205,18 +211,17 @@ function diffPlans(before: LivePlan[], after: LivePlan[]): string[] {
 
 /** Re-checks the services the user subscribes to whose plan data is older than a day. */
 async function monitorOnce() {
-  if (!planMonitorAvailable()) return;
   const data = db();
   const current = livePlansForRegion();
-  const due = [...new Set(data.subscriptions.filter((s) => s.providerId && s.status !== 'cancelled').map((s) => s.providerId!))]
-    // Background checks only read known price pages. Searching for a price page needs Google Search
-    // quota the free tier does not have, and every refused attempt still spends a daily request.
-    .filter((id) => PRICING_PAGES[id])
-    .filter((id) => Date.now() - Date.parse(current[id]?.lastAttemptAt ?? current[id]?.checkedAt ?? '1970-01-01') > STALE_AFTER_MS)
-    .slice(0, 3);
+  const subscribed = new Set(data.subscriptions.filter((s) => s.providerId && s.status !== 'cancelled').map((s) => s.providerId!));
+  // Every provider with a readable price page is kept current, subscribed ones first. Reading a
+  // page directly costs nothing, so this no longer depends on the model's daily allowance.
+  const due = [...scrapedProviders()]
+    .filter((id) => canScrapePrices(id, data.settings.currency))
+    .sort((a, b) => Number(subscribed.has(b)) - Number(subscribed.has(a)))
+    .filter((id) => Date.now() - Date.parse(current[id]?.lastAttemptAt ?? current[id]?.checkedAt ?? '1970-01-01') > STALE_AFTER_MS);
   if (due.length === 0) return;
-  log.info('plans', `Monitor: checking ${due.length} subscribed service${due.length === 1 ? '' : 's'}`, { services: due });
-  // One at a time: this is background work, and free-tier Gemini quotas are small.
+  log.info('plans', `Monitor: reading ${due.length} price page${due.length === 1 ? '' : 's'}`, { services: due });
   for (const id of due) await refreshPlans(id).catch(() => {});
 }
 

@@ -2,6 +2,7 @@ import { setCurrency } from '@/domain/dates';
 import { analyze } from '@/domain/intelligence';
 import type { AppState } from '@/domain/types';
 import { agentEngine } from '@/server/agent/run';
+import { startAuditSchedule } from '@/server/agent/schedule';
 import { availableBanks, plaidIsSandbox } from '@/server/integrations/bank';
 import { paypalMode } from '@/server/integrations/paypal';
 import { llmUsage } from '@/server/llm';
@@ -15,6 +16,7 @@ export function buildState(): AppState {
   const data = db();
   startPlanMonitor();
   startConnectionMonitor();
+  startAuditSchedule();
   // Amounts in generated text (issues, recommendations) are formatted in the user's currency.
   setCurrency(data.settings.currency);
 
@@ -36,7 +38,7 @@ export function buildState(): AppState {
     refunds: data.refunds ?? [],
     fitChecks: data.fitChecks ?? {},
     connections: buildConnections(data),
-    monitor: { extensionSeenAt: data.extensionSeenAt, checkedAt: connectionsCheckedAt() },
+    monitor: { extensionSeenAt: data.extensionSeenAt, checkedAt: connectionsCheckedAt(), lastScheduledAuditAt: data.lastScheduledAuditAt },
     bankTransactions: [...data.bankTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 500),
     usage: data.usage,
     integrations: {

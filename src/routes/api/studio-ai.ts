@@ -49,7 +49,7 @@ function toContents(items: AgAiConversationItem[]): Content[] {
 // One model turn for AG Studio's agent framework. The browser-side adapter (components/studio/ai.ts)
 // posts Studio's request here; this is the only place the Gemini key is used for the dashboard.
 async function POST({ request }: RouteContext) {
-  if (!llmAvailable()) return fail(503, 'The assistant needs GEMINI_API_KEY in .env.local.');
+  if (!llmAvailable()) return fail(503, 'The assistant is not available right now.');
   const body = (await request.json().catch(() => null)) as AgLlmRequest | null;
   if (!body?.input) return fail(400, 'Invalid request');
 

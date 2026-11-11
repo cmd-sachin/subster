@@ -1,17 +1,18 @@
-// The top of the Command center: a greeting, one honest sentence about where things stand, and
-// three nudges. The nudges lean on well-known quirks in how people judge money, always in the
-// user's favour and always with their own numbers:
-//   - loss framing and a yearly figure, because a monthly price hides what a subscription costs;
-//   - a visible, already-started progress bar, because people finish what looks under way;
-//   - one small next step with a deadline, because a single easy action beats a long list.
-// The "Money mindset" card says the quiet part out loud, one idea at a time.
+// The top of the Command center. One number, one next step, and two quiet cards beside it.
+//
+// It is short on purpose: a person decides from a single clear figure faster than from a
+// paragraph. The figure is yearly, because a monthly price is built to feel small. The bar is
+// never empty, because a goal that looks under way gets finished. The next step is the one with
+// the nearest deadline, because one easy action beats a list.
 
 import { Link } from '@tanstack/react-router';
-import { ArrowRight, Lightbulb, RefreshCw, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { cycleShort, diffDays, money, shortDate, today } from '@/domain/dates';
+import { diffDays, money, shortDate, today } from '@/domain/dates';
+import { acceptsPayPal } from '@/domain/paypal-acceptance.gen';
 import type { AppState, Insight } from '@/domain/types';
 import { AppLogo } from './app-logo';
+import { PayPalMark } from './paypal-mark';
 
 const round = (n: number) => Math.round(n);
 
@@ -19,7 +20,7 @@ export function greeting(hour = new Date().getHours()) {
   return hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 }
 
-/** Ideas about money that apply to this user's data right now, most relevant first. */
+/** One-line ideas about money that fit this user's data right now, most relevant first. */
 function mindsetTips(state: AppState): { title: string; body: string }[] {
   const { portfolio } = state;
   const live = portfolio.insights.filter((i) => i.sub.status !== 'cancelled' && i.sub.status !== 'paused');
@@ -28,28 +29,18 @@ function mindsetTips(state: AppState): { title: string; body: string }[] {
   const trial = live.find((i) => i.sub.status === 'trial' && i.sub.trialEndsAt);
   if (trial) {
     const days = diffDays(trial.sub.trialEndsAt!, today());
-    tips.push({ title: 'Free trials count on you forgetting', body: `${trial.sub.name} starts charging ${money(trial.sub.price)} ${days <= 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}. Deciding now takes a minute. Deciding later usually means paying.` });
+    tips.push({ title: 'Free trials count on you forgetting', body: `${trial.sub.name} starts charging ${days <= 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}.` });
   }
-  if (portfolio.monthlySpend > 0) {
-    tips.push({ title: 'Think in years, not months', body: `A monthly price is built to feel small. Yours add up to ${money(round(portfolio.yearlySpend))} a year, which is the number worth judging.` });
-  }
+  if (portfolio.monthlySpend > 0) tips.push({ title: 'Think in years, not months', body: `Yours add up to ${money(round(portfolio.yearlySpend))} a year.` });
   const priciest = [...live].filter((i) => i.costPerHour !== null && i.hours30 > 0).sort((a, b) => (b.costPerHour ?? 0) - (a.costPerHour ?? 0))[0];
-  if (priciest) {
-    tips.push({ title: 'Price per use tells the truth', body: `${priciest.sub.name} cost you ${money(priciest.costPerHour!)} for each hour you used it this month. Would you pay that at the door?` });
-  }
+  if (priciest) tips.push({ title: 'Price per use tells the truth', body: `${priciest.sub.name} cost you ${money(priciest.costPerHour!)} an hour this month.` });
   const idle = live.find((i) => i.verdict === 'unused' || i.verdict === 'poor');
-  if (idle) {
-    tips.push({ title: 'What you already paid is gone either way', body: `Keeping ${idle.sub.name} to "get your money's worth" does not bring past payments back. Only the next ${money(idle.sub.price)} is still your choice.` });
-  }
+  if (idle) tips.push({ title: 'What you already paid is gone', body: `Only the next ${money(idle.sub.price)} for ${idle.sub.name} is still your choice.` });
   const soon = live.filter((i) => i.daysToRenewal >= 0 && i.daysToRenewal <= 7).length;
-  if (soon > 0) {
-    tips.push({ title: 'Doing nothing is also a decision', body: `Auto-renewal works because the easy option is to do nothing. ${soon} of your subscriptions renew${soon === 1 ? 's' : ''} in the next 7 days. Make it a choice, not a default.` });
-  }
+  if (soon > 0) tips.push({ title: 'Doing nothing is also a decision', body: `${soon} renew${soon === 1 ? 's' : ''} this week. Make it a choice.` });
   const loved = [...live].filter((i) => i.verdict === 'great').sort((a, b) => b.hours30 - a.hours30)[0];
-  if (loved) {
-    tips.push({ title: 'Spend freely on what you love', body: `${loved.sub.name} got ${loved.hours30} hours from you this month. Cutting what you ignore is what makes paying for this one guilt-free.` });
-  }
-  if (tips.length === 0) tips.push({ title: 'Small leaks are the easy ones to miss', body: 'Nobody notices one small monthly charge. Subster adds them up so you can see them as one number and decide once.' });
+  if (loved) tips.push({ title: 'Spend freely on what you love', body: `${loved.sub.name} got ${loved.hours30} hours from you this month.` });
+  if (tips.length === 0) tips.push({ title: 'Small leaks are easy to miss', body: 'Subster adds them up so you decide once.' });
   return tips;
 }
 
@@ -66,6 +57,7 @@ export function Welcome({ state }: { state: AppState }) {
   const live = portfolio.insights.filter((i) => i.sub.status !== 'cancelled' && i.sub.status !== 'paused');
   const scored = live.filter((i) => i.valueScore !== null);
   const earning = scored.filter((i) => i.verdict === 'great' || i.verdict === 'fair').length;
+  const changes = live.filter((i) => ['cancel', 'pause', 'downgrade'].includes(i.recommendation.action) && i.recommendation.savingsMonthly > 0).length;
   const possibleYear = round(portfolio.potentialSavingsMonthly * 12);
   const savedYear = round(state.actions.filter((a) => a.status === 'executed' && a.type !== 'subscribe').reduce((t, a) => t + a.savingsMonthly, 0) * 12);
   const goal = savedYear + possibleYear;
@@ -73,68 +65,104 @@ export function Welcome({ state }: { state: AppState }) {
   const tips = mindsetTips(state);
   const tip = tips[tipIndex % tips.length];
 
-  const summary =
-    possibleYear > 0
-      ? `${money(possibleYear)} a year is going to things you barely use. ${win ? 'One small change gets you started.' : ''}`
-      : scored.length > 0
-        ? `Nicely done: ${earning} of ${scored.length} measured subscription${scored.length === 1 ? ' is' : 's are'} earning ${scored.length === 1 ? 'its' : 'their'} place, and there is nothing to cut right now.`
-        : 'Your subscriptions are tracked. Once your browser or phone reports some usage, I can tell you which ones are worth it.';
-
   return (
     <section className="grid gap-4 lg:grid-cols-12" aria-label="Where you stand">
-      <div className="brand-blue relative overflow-hidden rounded-[22px] p-5 text-white lg:col-span-7">
-        <img src="/logo-mark.png" alt="" aria-hidden="true" className="pointer-events-none absolute -right-6 -top-8 h-44 w-44 rotate-6 opacity-[0.16]" />
-        <p className="max-w-xl text-[17px] font-semibold leading-snug tracking-[-0.01em]">{summary}</p>
+      <div className="brand-blue relative overflow-hidden rounded-[28px] p-7 text-white lg:col-span-8">
+        <img src="/logo-mark.png" alt="" aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 h-52 w-52 rotate-6 opacity-[0.13]" />
+        {possibleYear > 0 ? (
+          <>
+            <p className="text-[14px] font-medium text-white/80">You could keep</p>
+            <p className="num mt-1 text-[56px] font-semibold leading-none tracking-[-0.035em]">{money(possibleYear)}</p>
+            <p className="mt-2 text-[15px] text-white/85">
+              a year, with {changes} small change{changes === 1 ? '' : 's'}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[14px] font-medium text-white/80">{scored.length > 0 ? 'You are all set' : 'Almost there'}</p>
+            <p className="mt-1 max-w-md text-[34px] font-semibold leading-tight tracking-[-0.03em]">{scored.length > 0 ? `${earning} of ${scored.length} are earning their place` : 'Usage will tell us what is worth it'}</p>
+          </>
+        )}
 
         {goal > 0 && (
-          <div className="mt-5 max-w-lg">
-            <div className="flex items-baseline justify-between text-[12px] font-medium text-white/80">
-              <span className="flex items-center gap-1.5">
-                <Target size={13} aria-hidden="true" /> Savings claimed
-              </span>
-              <span className="num">
-                {money(savedYear)} of {money(goal)} a year
-              </span>
+          <div className="mt-6 max-w-md">
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/20" role="img" aria-label={`${money(savedYear)} of ${money(goal)} a year saved`}>
+              <div className="h-full rounded-full bg-sun transition-[width] duration-700" style={{ width: `${Math.max(6, Math.min(100, (savedYear / goal) * 100))}%` }} />
             </div>
-            {/* The bar never starts empty: a goal that looks under way is one people finish. */}
-            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/20" role="img" aria-label={`${money(savedYear)} of ${money(goal)} a year claimed`}>
-              <div className="h-full rounded-full bg-accent transition-[width] duration-700" style={{ width: `${Math.max(6, Math.min(100, (savedYear / goal) * 100))}%` }} />
-            </div>
-            <p className="mt-1.5 text-[12px] text-white/70">{savedYear === 0 ? 'The first one is the hardest. After that it is a habit.' : possibleYear === 0 ? 'All claimed. That money stays with you every year.' : `${money(possibleYear)} a year still on the table.`}</p>
+            <p className="num mt-2 text-[13px] text-white/75">{savedYear === 0 ? 'Nothing claimed yet. The first one is the hardest.' : `${money(savedYear)} of ${money(goal)} claimed`}</p>
           </div>
         )}
 
-        {win && (
-          <Link to="/savings" className="mt-5 flex max-w-lg items-center gap-3 rounded-2xl bg-black/25 p-3 transition-colors hover:bg-black/35">
-            <AppLogo providerId={win.sub.providerId} category={win.sub.category} color={win.sub.color} size={36} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-accent">
-                <Sparkles size={12} aria-hidden="true" /> Quick win, about two minutes
-              </span>
-              <span className="block truncate text-[14px] font-semibold">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {possibleYear > 0 && (
+            <Link to="/savings" className="rounded-full bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0035c5] transition-transform hover:scale-[1.02]">
+              Review savings
+            </Link>
+          )}
+          {win && (
+            <Link to="/savings" className="flex min-w-0 items-center gap-2.5 rounded-full bg-black/20 py-1.5 pl-1.5 pr-4 text-[13px] font-medium transition-colors hover:bg-black/30">
+              <AppLogo providerId={win.sub.providerId} category={win.sub.category} color={win.sub.color} size={28} />
+              <span className="truncate">
                 {win.recommendation.action === 'downgrade' ? 'Downgrade' : win.recommendation.action === 'pause' ? 'Pause' : 'Cancel'} {win.sub.name} before {shortDate(win.sub.trialEndsAt ?? win.sub.nextRenewal)}
               </span>
-              <span className="num block text-[12px] text-white/75">
-                Keeps {money(round(win.recommendation.savingsMonthly * 12))} a year with you, instead of {money(win.sub.price)}/{cycleShort(win.sub.cycle)} leaving
-              </span>
-            </span>
-            <ArrowRight size={18} className="shrink-0 text-accent" aria-hidden="true" />
-          </Link>
-        )}
+              <ArrowRight size={15} className="shrink-0 text-sun" aria-hidden="true" />
+            </Link>
+          )}
+        </div>
       </div>
 
-      <aside className="panel flex flex-col p-5 lg:col-span-5" aria-label="Money mindset">
-        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-accent">
-          <Lightbulb size={14} aria-hidden="true" /> Money mindset
-        </p>
-        <h2 className="mt-2 text-[16px] font-semibold leading-snug">{tip.title}</h2>
-        <p className="mt-1.5 flex-1 text-[13px] leading-relaxed text-muted">{tip.body}</p>
-        {tips.length > 1 && (
-          <button onClick={() => setTipIndex((i) => i + 1)} className="mt-3 flex items-center gap-1.5 self-start rounded-lg border border-white/10 px-2.5 py-1.5 text-[12px] font-medium text-muted hover:bg-white/[0.06] hover:text-ink">
-            <RefreshCw size={12} aria-hidden="true" /> Another one
-          </button>
-        )}
-      </aside>
+      <div className="grid gap-4 lg:col-span-4">
+        <PayPalCard state={state} />
+        <button onClick={() => setTipIndex((i) => i + 1)} className="panel group p-5 text-left transition-colors hover:bg-white/[0.03]" aria-label="Money mindset. Show another.">
+          <p className="text-[12px] font-medium text-sun">Money mindset</p>
+          <p className="mt-1.5 text-[16px] font-semibold leading-snug">{tip.title}</p>
+          <p className="mt-1 text-[13px] text-muted">{tip.body}</p>
+        </button>
+      </div>
     </section>
+  );
+}
+
+/**
+ * PayPal's part, in the user's own numbers: how much of what they pay sits where one tap can
+ * pause or cancel it, and what that has already saved them.
+ */
+function PayPalCard({ state }: { state: AppState }) {
+  const live = state.portfolio.insights.filter((i) => i.sub.status !== 'cancelled');
+  const managed = live.filter((i) => i.sub.paypalSubscriptionId);
+  const viaPayPal = state.actions.filter((a) => a.status === 'executed' && a.channel === 'paypal_api');
+  const saved = round(viaPayPal.filter((a) => a.type !== 'subscribe').reduce((t, a) => t + a.savingsMonthly, 0));
+  const connected = state.integrations.paypal !== 'off';
+  // Subscriptions paid another way whose provider is confirmed to take PayPal here.
+  const movable = live.filter((i) => !i.sub.paypalSubscriptionId && acceptsPayPal(i.sub.providerId, state.settings.currency)).length;
+
+  return (
+    <Link to={connected ? '/services' : '/connect'} className="panel group flex flex-col justify-between p-5 transition-colors hover:bg-white/[0.03]">
+      <div className="flex items-center justify-between">
+        <span className="text-[16px]"><PayPalMark size={17} /></span>
+        <span className="flex items-center gap-1.5 text-[12px] text-muted">
+          <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-good' : 'bg-faint'}`} aria-hidden="true" />
+          {!connected ? 'Not connected' : state.integrations.paypal === 'live' ? 'Connected' : 'Test mode'}
+        </span>
+      </div>
+      <div className="mt-4">
+        {managed.length > 0 ? (
+          <>
+            <p className="text-[22px] font-semibold leading-tight tracking-[-0.02em]">
+              <span className="num">{managed.length}</span> of <span className="num">{live.length}</span> on one-tap control
+            </p>
+            <p className="num mt-1 text-[13px] text-muted">{saved > 0 ? `${money(saved)} a month saved through PayPal` : movable > 0 ? `${movable} more accept PayPal` : 'Pause or cancel instantly, confirmed by PayPal'}</p>
+          </>
+        ) : (
+          <>
+            <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em]">{movable > 0 ? `${movable} of yours accept PayPal` : 'Cancel in one tap, not ten screens'}</p>
+            <p className="mt-1 text-[13px] text-muted">{movable > 0 ? 'Pay with PayPal to manage them from one account.' : 'Subscriptions started here with PayPal can be paused or cancelled in one tap.'}</p>
+          </>
+        )}
+      </div>
+      <span className="mt-4 flex items-center gap-1 text-[13px] font-medium text-accent">
+        {connected ? 'Start one with PayPal' : 'Connect PayPal'} <ChevronRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </span>
+    </Link>
   );
 }

@@ -114,6 +114,8 @@ export interface FitQuestion {
   kind: 'titles' | 'choice' | 'multi' | 'text' | 'number';
   options?: string[];
   hint?: string;
+  /** For titles: what is popular on the service right now, to pick from. */
+  suggestions?: string[];
 }
 
 export interface FitTitle {
@@ -155,6 +157,19 @@ export interface FitCheck {
   /** What the judgement rests on, including what could not be checked. */
   basis: string[];
   steps: RunStep[];
+}
+
+/**
+ * A proposal the user turned down. It is how Subster learns a preference: the same change is not
+ * suggested again until something about the subscription has actually changed.
+ */
+export interface Decline {
+  subId: string;
+  type: ActionType;
+  at: string;
+  /** What the subscription cost and how much it was used when the user said no. */
+  price: number;
+  hours30: number;
 }
 
 export type RefundReason = 'charged_after_cancel' | 'unused_renewal' | 'trial_converted' | 'duplicate_charge' | 'price_changed' | 'other';
@@ -241,7 +256,7 @@ export interface RunStep {
 
 export interface AgentRun {
   id: string;
-  trigger: 'manual' | 'webhook' | 'bank' | 'chat';
+  trigger: 'manual' | 'webhook' | 'bank' | 'chat' | 'schedule';
   triggerDetail?: string;
   engine: 'gemini' | 'rules';
   startedAt: string;
@@ -263,6 +278,10 @@ export interface Db {
   runs: AgentRun[];
   /** Refund requests. Optional so documents written before it existed still load. */
   refunds?: RefundRequest[];
+  /** Proposals the user turned down, newest first. */
+  declines?: Decline[];
+  /** When the agent last audited everything on its own schedule. */
+  lastScheduledAuditAt?: string;
   /** Live lookups kept for a day, so repeating a check does not spend the model's small daily allowance. */
   liveCache?: Record<string, { at: string; value: unknown }>;
   /** The latest fit check per subscription. */
@@ -327,6 +346,8 @@ export interface Insight {
   costPerHour: number | null;
   valueScore: number | null;
   verdict: Verdict;
+  /** Set when a change was recommended but the user has already said no to it and nothing has changed since. */
+  keptByChoice?: { type: ActionType; at: string };
   daysToRenewal: number;
   issues: Issue[];
   recommendation: Recommendation;
@@ -364,7 +385,7 @@ export interface AppState {
   /** How each subscription is connected right now, by subscription id. */
   connections: Record<string, ServiceConnection>;
   /** When the browser extension last called in, and when connections were last verified. */
-  monitor: { extensionSeenAt?: string; checkedAt?: string };
+  monitor: { extensionSeenAt?: string; checkedAt?: string; lastScheduledAuditAt?: string };
   /** Imported bank payments, newest first (the latest 500). */
   bankTransactions: BankTransaction[];
   usage: UsageDay[];
@@ -454,6 +475,8 @@ export type Currency = 'USD' | 'INR' | 'EUR' | 'GBP';
 export interface Settings {
   /** The currency the user's own money is in. Amounts are never converted. */
   currency: Currency;
+  /** Whether the agent audits everything once a day by itself. On unless switched off. */
+  dailyAudit?: boolean;
 }
 
 /** catalog: a known provider. rules: keyword match. ai: Gemini. user: set by hand. */

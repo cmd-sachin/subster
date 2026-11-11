@@ -44,6 +44,22 @@ function scoreOf(costPerHour: number, category: Category, trendPct: number | nul
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
+/** How long a "no" stands when nothing about the subscription changes. */
+export const DECLINE_HOLDS_DAYS = 45;
+
+/**
+ * The user's earlier "no" to this kind of change, if it still stands. It stops standing when the
+ * price has gone up, when use has fallen to half of what it was at the time, or after the hold.
+ */
+export function standingDecline(data: Db, subId: string, action: string, price: number, hours30: number, now: string) {
+  if (action !== 'cancel' && action !== 'pause' && action !== 'downgrade') return undefined;
+  // Saying no to cancelling also answers the milder suggestions that follow from the same low use.
+  const covers = (declined: string) => declined === action || (declined === 'cancel' && (action === 'pause' || action === 'downgrade')) || (declined === 'pause' && action === 'cancel');
+  return (data.declines ?? []).find(
+    (d) => d.subId === subId && covers(d.type) && diffDays(now, d.at.slice(0, 10)) <= DECLINE_HOLDS_DAYS && price <= d.price && !(d.hours30 >= 2 && hours30 <= d.hours30 / 2),
+  );
+}
+
 export function analyze(data: Db): Portfolio {
   const now = today();
   const from30 = addDays(now, -30);
@@ -205,8 +221,15 @@ export function analyze(data: Db): Portfolio {
       recommendation = { action: 'cancel', reason: `${money(costPerHour ?? 0)}/hour is well above fair value for ${sub.category.toLowerCase()}.`, savingsMonthly: round(cost), confidence };
     }
 
+    // A change the user already turned down is not recommended again while nothing has changed.
+    const respected = standingDecline(data, sub.id, recommendation.action, sub.price, b.hours30, now);
+    if (respected) {
+      recommendation = { action: 'keep', reason: `You chose to keep this on ${respected.at.slice(0, 10)}. It comes back if the price goes up, your use drops further, or after ${DECLINE_HOLDS_DAYS} days.`, savingsMonthly: 0, confidence: 'high' };
+    }
+
     return {
       sub,
+      ...(respected && { keptByChoice: { type: respected.type, at: respected.at } }),
       monthlyCost: round(cost),
       yearlyCost: round(cost * 12),
       hours30: b.hours30,

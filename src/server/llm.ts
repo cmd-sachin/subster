@@ -18,7 +18,8 @@ const ATTEMPT_TIMEOUT_MS = 45_000;
  * members each have their own free key; GEMINI_API_KEY (or GOOGLE_API_KEY) is the single-key form.
  * Daily allowances are counted per Google project, so keys from the same project do not add up.
  */
-const apiKeys = () => [...new Set([...(process.env.GEMINI_API_KEYS ?? '').split(','), process.env.GEMINI_API_KEY ?? '', process.env.GOOGLE_API_KEY ?? ''].map((k) => k.trim()).filter(Boolean))];
+// Either variable may hold several keys: a list pasted into GEMINI_API_KEY works too.
+const apiKeys = () => [...new Set([process.env.GEMINI_API_KEYS, process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY].flatMap((value) => (value ?? '').split(/[,\s]+/)).filter(Boolean))];
 
 export const llmAvailable = () => apiKeys().length > 0;
 export const llmModel = () => process.env.GEMINI_MODEL || DEFAULT_MODEL;
@@ -36,18 +37,22 @@ function gemini(key: string) {
   return client;
 }
 
-/** A message a user can act on, from whatever the SDK threw. */
+/**
+ * What to tell the user when the model could not answer. It never names keys, quotas or status
+ * codes: those are for whoever runs the server, and they go to the log.
+ */
 export function describeLlmError(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 400 && /api key/i.test(error.message)) return 'The Gemini API key was rejected. Check GEMINI_API_KEY in .env.local.';
-    if (error.status === 401 || error.status === 403) return 'The Gemini API key was rejected. Check GEMINI_API_KEY in .env.local.';
-    if (error.status === 404) return `The Gemini model "${llmModel()}" is not available to this key. Set GEMINI_MODEL in .env.local.`;
-    if (error.status === 429 && /PerDay/i.test(error.message)) return 'Gemini\'s free daily allowance is used up on every key and model (about 20 requests a day each). It resets within a day. Adding another key to GEMINI_API_KEYS in .env.local gives more.';
-    if (error.status === 429) return 'The Gemini API is rate limiting requests (free-tier quotas are low). Try again in a moment.';
-    if (error.status === 503) return 'Gemini is overloaded right now on every model that was tried. Try again in a moment.';
-    return `Gemini API error ${error.status}: ${error.message.slice(0, 300)}`;
+    log.warn('llm', 'Model request failed', { status: error.status, message: error.message.slice(0, 300) });
+    if (error.status === 429 || error.status >= 500) return 'The assistant is busy right now. Please try again in a little while.';
+    return 'The assistant is not available right now.';
   }
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (/aborted|timed? ?out|fetch failed|ECONN|ENOTFOUND/i.test(message)) {
+    log.warn('llm', 'Model request failed', { message: message.slice(0, 300) });
+    return 'The assistant took too long to answer. Please try again.';
+  }
+  return message;
 }
 
 /** The visible text of a response: text parts that are not the model's private reasoning. */

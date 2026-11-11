@@ -36,7 +36,7 @@ export function fitQuestions(insight: Insight, all: Insight[]): FitQuestion[] {
 
   if (VIDEO.includes(sub.category)) {
     return [
-      { id: 'titles', kind: 'titles', label: `You pay ${paying} for ${sub.name}${used}. Which films or series are you keeping it for, or want to watch next?`, hint: 'One per line, up to six. These are checked against what is actually available.' },
+      { id: 'titles', kind: 'titles', label: `You pay ${paying} for ${sub.name}${used}. Which films or series are you keeping it for, or want to watch next?`, hint: 'Add up to six. Each one is checked against what is actually available.' },
       { id: 'hours', kind: 'choice', label: 'In a normal week, how much do you expect to watch on it?', options: ['Under 2 hours', '2 to 5 hours', '5 to 10 hours', 'More than 10 hours'] },
       { id: 'needs', kind: 'multi', label: 'Which of these do you actually need?', options: ['4K quality', 'Several screens at once', 'Downloads for offline', 'Regional language content', 'Live sport', 'Kids profiles'] },
       { id: 'rent', kind: 'choice', label: 'If a title could be rented once for less than a month of the subscription, would that work for you?', options: ['Yes, I mostly want specific titles', 'Sometimes', 'No, I like browsing a library'] },
@@ -134,6 +134,7 @@ How to work:
 - Judge capability claims about AI models cautiously: product line-ups change quickly and your own knowledge may be out of date. Prefer what the official pages returned.
 - Be on the user's side, not the provider's and not against it. If the subscription is good value for them, say so and recommend keeping it.
 - If your recommendation is to cancel or downgrade and the evidence is strong, also call propose_action so it waits in their inbox. Never propose for "keep", "switch" or "rent_instead".
+- A downgrade proposal always moves to the plan named as cheaper_plan in the subscription detail. If you recommend a downgrade, recommend that plan and quote its saving, so your words and the inbox agree. You may mention an even cheaper plan as a further option, but not as the headline.
 - Then call finish. Plain language, no markdown, no em dashes.`;
 
 type Emit = (event: StreamEvent) => void;
@@ -147,7 +148,38 @@ function sameService(listed: string, subName: string) {
   return a.includes(b) || b.includes(a) || (core.length >= 5 && a.includes(core));
 }
 
-export async function runFitCheck(subId: string, answers: Record<string, string>, emit: Emit): Promise<FitCheck> {
+/**
+ * After the standard questions, the model may ask up to two more whose answers would change the
+ * verdict. It returns none when it has enough, and none when it is unavailable.
+ */
+export async function followUpQuestions(subId: string, answers: Record<string, string>): Promise<FitQuestion[]> {
+  const insights = analyze(db()).insights;
+  const insight = insights.find((i) => i.sub.id === subId);
+  if (!insight || !llmAvailable()) return [];
+  const { sub } = insight;
+  const asked = fitQuestions(insight, insights);
+  const transcript = asked.map((q) => `Q: ${q.label}\nA: ${(answers[q.id] ?? '').replace(/\n+/g, '; ') || '(skipped)'}`).join('\n');
+  try {
+    const response = await generate({
+      contents: `Someone is deciding whether their ${sub.name} subscription (${CATEGORY_LABEL[sub.category]}, plan ${sub.plan}, ${money(sub.price)} per ${cycleShort(sub.cycle)}, ${insight.verdict === 'unmeasured' ? 'usage not measured' : `${insight.hours30} hours used in the last 30 days`}) is right for them. They have answered:\n\n${transcript}\n\nAsk at most two short follow-up questions, only if the answers would change the verdict: something that is unclear, contradictory, or missing for judging value for THIS person. If the answers are already enough, return an empty list. Do not repeat a question. Do not state facts about what the service offers or name films, series or products from memory. Speak to them directly as "you", friendly and brief, no em dashes.\n\nReply with one JSON array and nothing else: [{"label": the question, "kind": "choice" or "text", "options": two to four short options, for a choice only}]`,
+      config: { responseMimeType: 'application/json' },
+    });
+    const text = textOf(response);
+    const raw = JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)) as { label?: string; kind?: string; options?: unknown[] }[];
+    return raw
+      .filter((q) => typeof q.label === 'string' && q.label.trim().length > 8)
+      .slice(0, 2)
+      .map((q, index): FitQuestion => {
+        const options = Array.isArray(q.options) ? q.options.map(String).filter(Boolean).slice(0, 4) : [];
+        return { id: `ai${index + 1}`, label: q.label!.trim().slice(0, 240), kind: q.kind === 'choice' && options.length >= 2 ? 'choice' : 'text', ...(options.length >= 2 && q.kind === 'choice' && { options }) };
+      });
+  } catch (error) {
+    log.warn('fit', 'Follow-up questions unavailable', { error: describeLlmError(error) });
+    return [];
+  }
+}
+
+export async function runFitCheck(subId: string, answers: Record<string, string>, emit: Emit, followUps: { label: string; answer: string }[] = []): Promise<FitCheck> {
   const data = db();
   const portfolio = analyze(data);
   const insight = portfolio.insights.find((i) => i.sub.id === subId);
@@ -166,7 +198,7 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
     subId,
     createdAt: new Date().toISOString(),
     engine: llmAvailable() ? 'gemini' : 'rules',
-    answers,
+    answers: { ...answers, ...Object.fromEntries(followUps.filter((f) => f.answer.trim()).map((f, i) => [`ai${i + 1}`, f.answer])) },
     verdict: 'unclear',
     headline: '',
     reasoning: '',
@@ -187,6 +219,8 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
       const found = await titleAvailability(titles, currency);
       check.titles = found.map((t): FitTitle => ({ ...t, onService: t.offers.some((o) => o.kind === 'stream' && sameService(o.provider, sub.name)) }));
       for (const t of check.titles) if (t.url) check.sources.push({ label: `JustWatch: ${t.title}`, url: t.url });
+      // A rental or purchase price read here counts as read live when the verdict quotes it.
+      for (const t of check.titles) for (const o of t.offers) if (o.price) seen.live.add(priceKey(undefined, o.price));
       // What renting, once, every title the service does not carry would cost.
       const missing = check.titles.filter((t) => t.found && !t.onService);
       const rents = missing.map((t) => Math.min(...t.offers.filter((o) => o.kind === 'rent' && o.price && o.currency === currency).map((o) => o.price!)));
@@ -238,11 +272,32 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
 
   try {
     log.info('fit', `Fit check started for ${sub.name}`, { runId, engine: check.engine, answers: Object.keys(answers).length });
-    if (check.engine === 'rules') rulesVerdict(check, insight, portfolio.insights);
-    else {
+    // The lookups this kind of service always needs are done first, by reading the pages directly.
+    // They need no model, so the verdict has real availability and prices even when the model is out.
+    const titles = VIDEO.includes(sub.category) ? (answers.titles ?? '').split(/[\n,;]+/).map((t) => t.trim()).filter(Boolean).slice(0, 6) : [];
+    const rivals = sub.category === 'Storage' || sub.category === 'AI' ? Object.keys(PRICING_PAGES).filter((id) => providerById(id)?.category === sub.category) : [];
+    const lookups: [string, Record<string, unknown>][] = [...(titles.length > 0 ? [['check_titles', { titles }] as [string, Record<string, unknown>]] : []), ...(rivals.length > 0 ? [['read_official_prices', { app_ids: rivals }] as [string, Record<string, unknown>]] : [])];
+    let looked = '';
+    for (const [name, input] of lookups) {
+      record({ kind: 'tool', tool: name, title: name === 'check_titles' ? 'Looking up where your titles can be watched' : 'Reading official price pages' });
+      try {
+        const outcome = await callOwn(name, input);
+        record({ kind: 'tool', tool: name, title: outcome.summary });
+        looked += `\n\nAlready looked up for you with ${name} (do not call it again for the same input):\n${JSON.stringify(outcome.result)}`;
+      } catch (error) {
+        const message = describeLlmError(error);
+        record({ kind: 'tool', tool: name, title: `${name} failed`, detail: message });
+        looked += `\n\n${name} was tried and failed (${message}). Treat what it would have returned as unknown.`;
+        check.basis.push(name === 'check_titles' ? 'The titles could not be looked up, so availability is unknown.' : 'The official price pages could not be read.');
+      }
+    }
+    if (check.engine === 'rules') {
+      rulesVerdict(check, insight, portfolio.insights);
+      titleFacts(check, insight);
+    } else {
       const answered = Object.entries(answers).filter(([, v]) => v.trim());
       const questions = fitQuestions(insight, portfolio.insights);
-      const task = `Check this subscription: ${sub.name} (id "${sub.id}", category ${CATEGORY_LABEL[sub.category]}), plan ${sub.plan}, ${money(sub.price)} per ${cycleShort(sub.cycle)}. The user's currency is ${currency}.\n\nTheir answers:\n${answered.length > 0 ? answered.map(([id, value]) => `- ${questions.find((q) => q.id === id)?.label ?? id}\n  ${value.replace(/\n+/g, '; ')}`).join('\n') : '(they skipped the questions)'}`;
+      const task = `Check this subscription: ${sub.name} (id "${sub.id}", category ${CATEGORY_LABEL[sub.category]}), plan ${sub.plan}, ${money(sub.price)} per ${cycleShort(sub.cycle)}. The user's currency is ${currency}.\n\nTheir answers:\n${answered.length > 0 ? answered.map(([id, value]) => `- ${questions.find((q) => q.id === id)?.label ?? id}\n  ${value.replace(/\n+/g, '; ')}`).join('\n') : '(they skipped the questions)'}${followUps.filter((f) => f.answer.trim()).map((f) => `\n- ${f.label}\n  ${f.answer.replace(/\n+/g, '; ')}`).join('')}`;
       // What every check needs is fetched before the model starts, so its own turns go on what only it can decide.
       const detail = await runTool('get_subscription_detail', { subscription_id: sub.id }, runId);
       record({ kind: 'tool', tool: 'get_subscription_detail', title: detail.summary });
@@ -250,25 +305,6 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
       record({ kind: 'tool', tool: 'search_services', title: market.summary });
       const apps = ((market.result as { apps?: { id: string; name: string; plans: { name: string; price: number; currency: string; cycle: string }[]; plans_source: string; subscribed: boolean }[] }).apps ?? []).filter((app) => app.plans.length > 0);
       for (const app of apps) for (const plan of app.plans) seen.catalog.add(priceKey(app.id, plan.price));
-      // The lookups this kind of service always needs are done here too. They cost one model request
-      // each, and doing them up front saves the model a turn to ask for them.
-      const titles = VIDEO.includes(sub.category) ? (answers.titles ?? '').split(/[\n,;]+/).map((t) => t.trim()).filter(Boolean).slice(0, 6) : [];
-      const rivals = sub.category === 'Storage' || sub.category === 'AI' ? Object.keys(PRICING_PAGES).filter((id) => providerById(id)?.category === sub.category) : [];
-      const lookups: [string, Record<string, unknown>][] = [...(titles.length > 0 ? [['check_titles', { titles }] as [string, Record<string, unknown>]] : []), ...(rivals.length > 0 ? [['read_official_prices', { app_ids: rivals }] as [string, Record<string, unknown>]] : [])];
-      let looked = '';
-      for (const [name, input] of lookups) {
-        record({ kind: 'tool', tool: name, title: name === 'check_titles' ? 'Looking up where your titles can be watched' : 'Reading official price pages' });
-        try {
-          const outcome = await callOwn(name, input);
-          record({ kind: 'tool', tool: name, title: outcome.summary });
-          looked += `\n\nAlready looked up for you with ${name} (do not call it again for the same input):\n${JSON.stringify(outcome.result)}`;
-        } catch (error) {
-          const message = describeLlmError(error);
-          record({ kind: 'tool', tool: name, title: `${name} failed`, detail: message });
-          looked += `\n\n${name} was tried and failed (${message}). Treat what it would have returned as unknown.`;
-          check.basis.push(name === 'check_titles' ? 'The titles could not be looked up, so availability is unknown.' : 'The official price pages could not be read.');
-        }
-      }
       const briefing = `${task}\n\nSubscription detail (measured):\n${JSON.stringify(detail.result)}${looked}\n\nCatalog for this category (prices are list prices, see plans_source):\n${JSON.stringify(apps.map(({ id, name, plans, plans_source, subscribed }) => ({ id, name, plans, plans_source, subscribed })))}`;
       const contents: Content[] = [{ role: 'user', parts: [{ text: briefing }] }];
       const functionDeclarations = TOOLS.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.input_schema }));
@@ -314,7 +350,7 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
             }
           } catch (error) {
             const message = describeLlmError(error);
-            record({ kind: 'tool', tool: name, title: `${name} failed`, detail: message });
+            record({ kind: 'tool', tool: name, title: 'A lookup did not work, carrying on without it' });
             results.push(createPartFromFunctionResponse(call.id ?? name, name, { error: message }));
           }
         }
@@ -327,7 +363,8 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
     log.error('fit', `Fit check failed for ${sub.name}`, { runId, error: message });
     // A failed model run still leaves the user with the measured facts.
     rulesVerdict(check, insight, portfolio.insights);
-    check.basis.unshift(`The agent could not finish (${message}), so this verdict uses your measured usage only.`);
+    titleFacts(check, insight);
+    check.basis.unshift('The assistant was unavailable, so this verdict comes from your measured usage and what could be looked up.');
   }
 
   if (insight.verdict !== 'unmeasured' && insight.verdict !== 'essential') check.basis.push(`Usage: ${insight.hours30} hours in the last 30 days, measured on your ${sub.coverage === 'phone' ? 'phone' : sub.coverage === 'web' ? 'browser' : 'phone and browser'}.`);
@@ -339,6 +376,27 @@ export async function runFitCheck(subId: string, answers: Record<string, string>
   log.info('fit', `Fit check finished for ${sub.name}`, { runId, verdict: check.verdict, action: check.recommendation.action, titles: check.titles.length, alternatives: check.alternatives.length });
   emit({ type: 'done', runId, summary: check.headline });
   return check;
+}
+
+/** Folds what was read about the user's titles into a verdict made without the model. */
+function titleFacts(check: FitCheck, insight: Insight) {
+  const known = check.titles.filter((t) => t.found);
+  if (known.length === 0) return;
+  const { sub } = insight;
+  const here = known.filter((t) => t.onService).length;
+  const missing = known.length - here;
+  check.reasoning += ` Of the ${known.length} title${known.length === 1 ? '' : 's'} you named that could be looked up, ${here} ${here === 1 ? 'is' : 'are'} on ${sub.name}.`;
+  if (missing === 0) return;
+  if (check.rentTotal !== undefined) check.reasoning += ` Renting the other ${missing} once would cost ${money(check.rentTotal)}, against ${money(insight.monthlyCost)} a month for ${sub.name}.`;
+  // It carries nothing they asked for, and renting what they want costs less than one month of it.
+  if (here === 0 && check.rentTotal !== undefined && check.rentTotal < insight.monthlyCost) {
+    check.verdict = 'not_worth_it';
+    check.headline = `${sub.name} has none of the titles you named.`;
+    check.recommendation = { action: 'rent_instead', text: `Rent the ${missing} title${missing === 1 ? '' : 's'} you want for ${money(check.rentTotal)} in total and drop the ${money(insight.monthlyCost)} a month.`, monthlySaving: insight.monthlyCost };
+  } else if (here < known.length / 2 && check.verdict === 'worth_it') {
+    check.verdict = 'partly';
+    check.headline = `${sub.name} has fewer than half of the titles you named.`;
+  }
 }
 
 /** The verdict without a model: measured value and the catalog only. */

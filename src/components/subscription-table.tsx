@@ -31,16 +31,16 @@ export function SubscriptionTable() {
     <section className="panel" aria-label="Subscriptions">
       <header className="flex items-baseline justify-between border-b border-white/[0.06] px-4 py-3">
         <h2 className="text-[14px] font-semibold">Subscriptions</h2>
-        <span className="text-[12px] text-muted">Cost against the last 30 days of use, worst value first</span>
+        <span className="text-[12px] text-muted">Worst value first</span>
       </header>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] text-[13px]">
+        <table className="w-full min-w-[600px] text-[13px]">
           <thead>
-            <tr className="whitespace-nowrap text-left text-[11px] uppercase tracking-wide text-faint">
+            <tr className="whitespace-nowrap text-left text-[11px] text-faint">
               <th className="px-4 py-2 font-medium">Subscription</th>
               <th className="px-2 py-2 text-right font-medium">Cost</th>
               <th className="px-2 py-2 text-right font-medium">Used</th>
-              <th className="px-2 py-2 font-medium">12 weeks</th>
+              <th className="hidden px-2 py-2 font-medium 2xl:table-cell">12 weeks</th>
               <th className="px-2 py-2 text-right font-medium">Per hour</th>
               <th className="px-2 py-2 font-medium">Value</th>
               <th className="px-4 py-2 font-medium">Renews</th>
@@ -82,7 +82,7 @@ export function SubscriptionTable() {
                         </span>
                       )}
                     </td>
-                    <td className="px-2 py-2.5">
+                    <td className="hidden px-2 py-2.5 2xl:table-cell">
                       <Spark values={i.weekly.map((w) => w.hours)} color={v.bar} label={`${i.sub.name} weekly hours`} />
                     </td>
                     <td className="num px-2 py-2.5 text-right">{i.costPerHour !== null ? money(i.costPerHour) : <span className="text-faint">n/a</span>}</td>
@@ -99,7 +99,7 @@ export function SubscriptionTable() {
                         )}
                       </div>
                     </td>
-                    <td className="num whitespace-nowrap px-4 py-2.5 text-muted">{inactive ? 'n/a' : `${shortDate(i.sub.nextRenewal)} · ${i.daysToRenewal}d`}</td>
+                    <td className="num whitespace-nowrap px-4 py-2.5 text-muted">{inactive ? 'n/a' : shortDate(i.sub.nextRenewal)}</td>
                   </tr>
                   {isOpen && (
                     <tr className="bg-white/[0.025]">
@@ -164,7 +164,7 @@ function Detail({ insight: i, onChange }: { insight: Insight; onChange: (body: {
         <Choice label="What the agent may do" value={i.sub.policy} options={POLICY_LABEL} onChange={(policy) => onChange({ policy })} />
         <Choice label="Where usage is measured" value={i.sub.coverage} options={COVERAGE_LABEL} onChange={(coverage) => onChange({ coverage })} />
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-faint">
+          <span className="mb-1 block text-[11px] font-medium text-faint">
             Category <span className="normal-case tracking-normal">(decided by {{ catalog: "the app catalog", rules: "keyword rules", ai: "Gemini", user: "you" }[i.sub.classifiedBy]})</span>
           </span>
           <select value={i.sub.category} onChange={(e) => onChange({ category: e.target.value as Category })} className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[12px]">
@@ -183,7 +183,7 @@ function Detail({ insight: i, onChange }: { insight: Insight; onChange: (body: {
 function Choice<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Record<T, string>; onChange: (v: T) => void }) {
   return (
     <fieldset>
-      <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-faint">{label}</legend>
+      <legend className="mb-1 text-[11px] font-medium text-faint">{label}</legend>
       <div className="flex flex-wrap gap-1">
         {(Object.keys(options) as T[]).map((key) => (
           <button

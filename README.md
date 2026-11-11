@@ -1,219 +1,179 @@
 # Subster
 
-An agent that makes every subscription earn its place. It reads your own bank, statement and
-PayPal data, measures how much you actually use what you pay for, and proposes what to do before
-the next charge. You approve; it acts through PayPal and verifies the result. You can also start
-a new subscription by asking for it in chat.
+A subscription agent. It finds what you pay for, measures whether you actually use it, and helps
+you act on the answer. The agent proposes; you approve; PayPal carries it out and Subster reads
+the result back to prove it happened.
 
-Built for the PayPal AI Hackathon with PayPal, AG Studio (AG Grid), Bryntum Scheduler and APIMatic,
-on TanStack Start.
+Built for the PayPal AI Hackathon with PayPal, AG Studio (AG Grid) and Bryntum Scheduler, on
+TanStack Start with Google Gemini.
 
-## Run it
+## Why this matters to PayPal
+
+- **PayPal becomes the place where subscriptions are safe.** A subscription billed through PayPal
+  can be paused or cancelled in one tap and the change is confirmed with PayPal, not assumed.
+  That is the answer to the cancellation maze, and a reason to choose PayPal at checkout.
+- **Fewer disputes.** Most subscription chargebacks start as "I forgot" or "I could not cancel".
+  Subster warns before a charge, and when a charge is already taken it writes the refund request
+  from the user's own records instead of leaving a dispute as the only route.
+- **It shows where PayPal is accepted.** Each of the 273 services in the catalog carries what its
+  own help pages say about PayPal, with the source link.
+
+## See it in five minutes
 
 ```bash
 npm install
-cp env.example .env.local   # add the keys for the services you want connected
-npm run dev                 # http://localhost:3000
+cp env.example .env.local     # PayPal sandbox keys are enough to see the PayPal flow
+npm run dev                   # http://localhost:3000
 ```
 
-```bash
-npm run build && npm start  # production build, served from .output
-npm run typecheck && npm run lint
-npm test                    # statement parser tests (57 cases)
-npm run smoke               # end-to-end checks against the dev server. ERASES stored data.
-```
+1. Open **Connections** and press **Open demo**. Thirteen sample subscriptions appear with a year
+   of payments and 60 days of usage. Your own data is set aside and returns when you close it.
+2. **Command center**: one number (what you could keep a year), one quick win, the inbox of
+   proposals. Press **Run audit** to watch the agent work.
+3. **Savings**: every recommendation with its reason and yearly saving.
+4. **Services**: pick a service priced in dollars, press **Start with PayPal**, approve it in the
+   inbox. Subster creates a real PayPal sandbox plan and agreement and sends you to PayPal to
+   confirm. Back in Subster the subscription is under one-tap control: pause or cancel it and the
+   agreement's new status is read back from PayPal.
+5. **Transactions**: open any payment and press **Help** for a refund request, a cancellation or a
+   failed-payment fix.
+6. **Timeline** (Bryntum) and **Analytics** (AG Studio).
 
-**There is no simulated mode for integrations.** A fresh install is empty. A service without
-keys is shown as not connected, and the features that need it say so.
+Without any keys the app still runs on the demo data, with the built-in rules in place of the
+model and PayPal shown as not connected.
 
-**Connections are worked out, not entered.** For every subscription Subster shows whether it is
-in use right now, whether you are signed in, and where its payments are seen. The signals come
-from the browser extension (live presence and a sign-in check by session cookie name), the
-Android companion, OAuth-linked accounts, and the billing source. A monitor re-verifies PayPal
-agreements and OAuth links every 10 minutes and corrects a subscription's status when PayPal says
-it changed. Subster never signs in to a provider for you and never handles provider passwords;
-for providers with no API, "signed in" means your own browser holds a session there.
+## How PayPal is used
 
-**Fit check: is a subscription right for you?** On a subscribed service, the agent asks a few
-questions worded with your own plan, price and usage (which films and series you want; how much
-storage you use and on which devices; what you use an AI assistant for), then looks up what it
-can live and gives a verdict, a recommendation and alternatives. For video it checks each title
-you named against JustWatch for your country: whether your service has it, who else does, and what
-renting or buying costs, and compares renting once with a month of the subscription. For storage
-and AI it reads the official price pages of the alternatives. Each alternative's price is marked
-"read live", "catalog" or "not checked", and a title that could not be looked up is shown as
-unknown, never as unavailable. `src/server/agent/fit.ts`, `src/server/services/live.ts`
+| What | API | Where |
+| --- | --- | --- |
+| Start a subscription | Catalog Products, Billing Plans, Subscriptions (create) | `createAgreement` in `src/server/integrations/paypal.ts` |
+| Pause, cancel, resume | Subscriptions (suspend, cancel, activate) | `changeSubscription`, same file |
+| Prove the change | Subscriptions (show details), read before and after | `execute` in `src/server/services/actions.ts` |
+| Notice changes made elsewhere | Subscriptions (show details) every 10 minutes | `verifyConnections` in `src/server/services/connections.ts` |
+| Ledger | Transaction Search | `recentTransactions`; shown on Transactions |
+| Live events | Webhooks, signature verified before anything is recorded | `verifyWebhook`, `src/server/services/webhooks.ts` |
 
-Live reading uses Gemini's URL reader on pages named in the code, not Google Search. The model
-answers from memory when a page fails to load, so a fact is kept only when its page is reported
-as loaded. Two things to know: Gemini's free tier allows about 20 requests a day per model, and a
-check uses three to five, so real use needs billing enabled on the key; and JustWatch pages are a
-prototype source, a product would license that data.
+The official PayPal TypeScript Server SDK is used throughout; Catalog Products and webhook
+verification, which the SDK does not cover, are plain REST.
 
-**Demo data is separate and labelled.** Connections has an "Open demo data" button that fills
-the app with 13 made-up subscriptions, a year of payments and 60 days of phone and browser
-usage, built to trigger each thing the product does (pause, downgrade, duplicate, unused, trial
-ending, failed payment, price rise). While it is open the sidebar says "Demo data". Your own data
-is set aside in `.data/db.real.json` and restored unchanged when you close the demo.
-
-| To get | You need |
-| --- | --- |
-| Your subscriptions tracked | Nothing: add them from the Services page |
-| A live link to your bank | Plaid keys (US, Canada, UK, Europe) or Setu keys (India, see limits) |
-| Pause, cancel, resume and subscribe through PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` |
-| The agent reasoning with Gemini, live plan checks, and the AG Studio assistant | `GEMINI_API_KEY` |
-| Value scores | The Android companion in `android/` reporting usage |
-| Spotify plan and listening as usage | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
-
-## Webhooks and callbacks
-
-PayPal, Plaid, Setu and Spotify need a public HTTPS address to call back. The app has no login,
-so do not tunnel to it directly. Tunnel to the gateway, which forwards only the webhook and
-callback paths and answers 404 to everything else:
-
-```bash
-npm run gateway   # http://localhost:3001 -> the app on :3000, allowlisted paths only
-npm run tunnel    # public https URL for the gateway (Cloudflare quick tunnel)
-```
-
-Register `<tunnel url>/api/paypal/webhook` in the PayPal developer dashboard, then put the
-webhook id in `PAYPAL_WEBHOOK_ID` and the tunnel url in `PUBLIC_URL`. A quick tunnel gets a new
-address every time it starts, so the webhook has to be re-registered after a restart; a deployment
-or a named tunnel gives a stable one.
+**The model, stated plainly.** For a subscription started through Subster, Subster is the
+merchant of record: it creates the PayPal plan and agreement and bills in US dollars. That is
+what gives it the right to pause and cancel. It does not open an account at the provider. PayPal
+has no API that lets a third party manage an agreement a user holds with another merchant, so
+subscriptions paid elsewhere are handled by giving the user the provider's exact page and
+tracking the step to done.
 
 ## What it does
 
-1. **Follows the money.** Netflix, Hotstar, SonyLIV, PlayStation, Jio, Airtel and the rest publish
-   no billing APIs, so Subster reads where they all surface: a linked bank account, an uploaded
-   statement, or a PayPal agreement. A catalog of 273 apps in 13 categories maps statement text to the service, its
-   plans, its Android app and its official account page. Regular payments the catalog does not
-   know are held for you to confirm.
-2. **Classifies.** Every subscription gets a category in three tiers: the catalog (a fact), keyword
-   rules, then Gemini for names neither can place. You can override any of them, and the app shows
-   which tier decided.
-3. **Measures value, not just spend.** The Android companion reports per-app screen time. Cost and
-   usage become cost per hour and a 0 to 100 value score. Broadband, storage and mobile recharge
-   are tracked for price and renewal only. Without usage data a subscription is "not measured",
-   never "unused".
-4. **Acts, with permission.** The agent can only propose. Approving a proposal executes it:
-   through the PayPal Subscriptions API where PayPal manages the agreement (then re-reads the
-   agreement to verify), otherwise by handing you the provider's official page. Per subscription
-   you choose: ask me first, auto-pause when unused, or never touch.
-5. **Subscribes from chat.** "Subscribe to Spotify Premium Duo" becomes a proposal in the inbox.
-   Approving it creates a PayPal billing plan and agreement; you confirm it at PayPal, and only
-   then is the subscription recorded.
-6. **Lists every service, with its logo.** The Services page shows each service with its brand mark, plans, what you pay, and its account
-   page. Signing in to a provider is done on the provider's side: OAuth where it exists (Spotify),
-   the provider's own page otherwise. Subster never asks for a provider password.
-   Logos come from Simple Icons (157 apps, bundled; regenerate with `npm run logos`) and otherwise
-   from the provider's own site icon, fetched through Google's favicon service. Apps whose prices
-   could not be stated with confidence are listed without a plan table rather than with guesses.
-7. **Monitors official prices.** For any service, Gemini looks up the provider's own site with
-   Google Search grounding and URL reading, and reports the plans sold in your region and
-   currency, with the source pages and check time. A result is discarded unless its grounding
-   sources include the provider's own domain. A background monitor re-checks the
-   services you subscribe to every 6 hours and records changes. This needs `GEMINI_API_KEY`;
-   without it the page shows built-in catalog prices, labelled as not live. `src/server/services/plans.ts`
-8. **Logs everything.** Structured logs for every request, agent run, tool call, PayPal and bank
-   call, with request ids, secrets redacted, on disk at `.data/logs/app.log` and over
-   `/api/logs`.
+- **Finds subscriptions.** From PayPal, a linked bank account, a bank statement, or by adding a
+  service from the catalog.
+- **Measures use.** A Chrome extension reports time on each service's site, live, and whether you
+  are signed in there. An Android companion reports screen time. Totals only.
+- **Scores value.** Cost against use gives a cost per hour, a 0 to 100 score and a plain verdict.
+  Without usage a subscription is "not measured", never "unused".
+- **Proposes, never acts alone.** Cancel, pause, downgrade or fix a payment. Nothing happens until
+  you approve. A change you turn down is remembered and not suggested again until the price or
+  your use changes.
+- **Audits daily on its own**, so a trial about to convert is caught before the charge.
+- **Fit check.** A short dialog asks how you use a service, then checks it: for video, whether the
+  titles you want are on it and what renting them costs; for storage and AI, how it compares with
+  the alternatives at current prices.
+- **Keeps prices current** by reading providers' own price pages directly.
+- **Refund and payment help** on the Transactions page.
 
 ## The agentic workflow
 
 ```
 trigger ──> agent run ──> tools ──> proposal ──> your approval ──> execute ──> verify ──> audit trail
 (manual,    (Gemini or    (read     (inbox, with   (or standing    (PayPal     (read the   (every step
- webhook,    rules         only +    evidence and    permission)     API or      agreement   recorded
- bank sync,  engine)       propose)  a deadline)                     guided)     back)       and logged)
- chat)
+ daily,      rules)        only +    evidence and    permission)     API or      agreement   recorded)
+ webhook,                  propose)  a deadline)                     guided)     back)
+ bank, chat)
 ```
 
-Agent tools: `list_subscriptions`, `get_subscription_detail`, `forecast_renewals`,
-`get_paypal_status`, `search_services`, `propose_action`, `propose_subscription`, `schedule_review`.
-None of them can change or buy anything. The only code that calls PayPal's create, cancel, suspend
-or activate is in `src/server/services/actions.ts`, reached from the approval endpoint or a standing
-permission.
+The agent's tools can read and propose. None can change or buy anything. The only code that calls
+PayPal's create, cancel, suspend or activate is in `src/server/services/actions.ts`, reached from
+the approval endpoint or from a standing permission the user gave for one subscription. That
+boundary is in the server, not in a prompt.
 
-## How the sponsor tech is used
+## Sponsor technology
 
-- **PayPal**: Subscriptions API (create plan and agreement, cancel, suspend, activate, read back to
-  verify), Transaction Search, signature-verified webhooks that trigger agent runs.
-  `src/server/integrations/paypal.ts`
-- **AG Studio**: the Analytics page. Three report pages on related data sources with a shared
-  calendar and cross-filtering, a custom widget (the ranked value board) that queries through the
-  widget API, a custom theme, and a custom lead agent in the Studio Agent Framework that delegates
-  to Studio's built-in agents, backed by Gemini through an adapter. `src/components/studio/`
-- **Bryntum Scheduler**: the renewal timeline. One row per subscription, billing periods as
-  resource time ranges, milestones for charges, trial conversions, price rises, failed payments,
-  bank charges and the agent's "decide by" deadlines. Reviews the agent schedules can be dragged.
+- **PayPal**: see the table above.
+- **AG Studio**: the Analytics page. Three report pages with cross-filtering, a custom ranked
+  "value board" widget that queries through the widget API, a custom theme, and an assistant
+  backed by Gemini. `src/components/studio/`
+- **Bryntum Scheduler**: the Timeline. Rows grouped by category with group totals, a summary row
+  that adds up what is charged in each day, week or month on screen, a toolbar (find, span, today,
+  zoom, filters), billing periods as resource time ranges, a year of upcoming charges as
+  milestones, context menus that pause, cancel or pin a reminder, and drag to move a reminder.
   `src/components/timeline.tsx`
-- **APIMatic**: the PayPal Context Plugin supplies accurate PayPal SDK context during development.
-  Install it with `npx context-plugins install paypal`.
 
-## Architecture
+## What has been run, and what has not
+
+Run and checked:
+- PayPal sandbox: creating a plan and agreement, Transaction Search, webhook signature
+  verification. `npm run smoke` creates a real sandbox agreement on every run.
+- The agent loop on Gemini, the fit check with live lookups, the daily audit, decline memory.
+- Direct reading of price pages (Netflix, Spotify, Apple Music, iCloud+, Google One, Claude) and of
+  JustWatch title pages.
+- The Chrome extension, loaded in Chrome: it synced and reported a site as in use within seconds.
+
+Written but not run against the real service:
+- Plaid, the Setu Account Aggregator connector and Spotify sign-in. No keys were available.
+- The Android companion builds (`cd android && ./gradlew assembleDebug`) but has not been run on
+  a phone.
+- Pausing or cancelling a PayPal agreement after a buyer has approved it. The code path is the
+  same one the smoke test exercises up to approval; the approval itself needs a person signed in
+  to a PayPal sandbox buyer account.
+
+## Limits
+
+- **No sign-in.** The app is single-user and holds financial data. Do not expose it publicly.
+- **PayPal bills subscriptions in US dollars here**, so only dollar-priced plans can be started
+  from Subster. Everything else works in the user's own currency, never converted.
+- **Indian bank accounts.** Plaid does not cover India and production Account Aggregator access is
+  limited to regulated entities, so a statement file is the route that works today.
+- **Usage** covers Chrome and Android. TV, console and desktop apps are invisible to it.
+- **PayPal acceptance list.** 102 services confirmed as accepting PayPal, 67 as not, 104 unknown.
+  Many help centres block automated readers, so a large share were read through a search engine's
+  extract of the official page. Acceptance varies by country; each entry keeps its source.
+- **Price pages and JustWatch pages are read directly**, honestly identified and within
+  robots.txt. A layout change makes a page "could not be read", never a guess. A product would
+  license title data rather than read JustWatch.
+- **Gemini's free tier** allows about 20 requests a day per model and key. Several keys can be
+  listed and are used in turn; when all are used up the built-in rules take over and say so.
+- **Value scoring** uses per-category "fair cost per hour" benchmarks. They are judgement calls
+  in `src/domain/intelligence.ts`, not measured data.
+
+## Commands
+
+```bash
+npm run dev          # the app
+npm run build && npm start
+npm run typecheck && npm run lint
+npm test             # statement parser tests
+npm run test:extension
+npm run smoke        # end to end against the dev server. Open the demo first: it erases the open data set.
+npm run gateway      # forwards only webhook and callback paths, for use behind a tunnel
+npm run tunnel       # public https address for the gateway
+```
+
+For PayPal webhooks, register `<tunnel address>/api/paypal/webhook` in the PayPal developer
+dashboard and set `PAYPAL_WEBHOOK_ID` and `PUBLIC_URL`.
+
+## Layout
 
 ```
 src/
-  domain/              Pure logic shared by server and browser. No I/O.
-    types.ts             the data model
-    catalog.ts           the app catalog (statement text, plans, account pages)
-    classify.ts          category classification (catalog, then keyword rules)
-    intelligence.ts      cost per hour, value score, issues, recommendation
-    dates.ts             dates, money in the user's currency, billing cycles
+  domain/          pure logic shared by server and browser: data model, catalog, scoring
   server/
-    http.ts              handle(): the wrapper every API route goes through
-    logger.ts            structured logs: console, NDJSON file, live stream
-    events.ts            in-process event bus behind the live updates
-    store/               persistence behind a two-method adapter (JSON file today)
-    integrations/        one module per outside system, each behind an interface
-      paypal.ts
-      bank/                BankConnector contract; plaid.ts and setu.ts implement it
-    services/            use cases
-      actions.ts           the permission boundary: propose, approve, execute, verify
-      discovery.ts         payments -> subscriptions and charges
-      statement.ts         bank statement parser
-      subscriptions.ts     the one place a subscription record is created
-      classifier.ts        the Gemini classification tier
-      accounts.ts          provider account linking (Spotify OAuth)
-      plans.ts             live plans from official sites, and the background monitor
-      bank.ts, webhooks.ts, state.ts
-    llm.ts               the one module that talks to the model (Google Gemini)
-    agent/               tools.ts (what the agent can do), run.ts (Gemini loop and rules engine)
-  routes/              TanStack Start: pages, and server routes under routes/api
-  components/          UI: command center, services, timeline (Bryntum), studio/ (AG Studio)
-android/               companion app (usage reporting)
-scripts/               smoke test, parser tests, vendor asset copy
+    integrations/  one module per outside system (paypal.ts, bank/)
+    services/      use cases: actions (the permission boundary), connections, refunds, plans, scrape
+    agent/         tools, the audit loop, the fit check, the daily schedule
+    store/         persistence behind an adapter (one JSON document today), demo data
+  routes/          pages, and server routes under routes/api
+  components/      UI, including timeline (Bryntum) and studio/ (AG Studio)
+extension/         Chrome extension: live usage and sign-in monitoring
+android/           companion app: screen time
+scripts/           smoke test, parser and extension tests
 ```
-
-Rules the layout enforces: `domain` imports nothing from `server`; route handlers contain no
-business logic; every outside system sits behind an interface.
-
-**Scaling path.** The store is one JSON document and the event bus is in-process, which is right
-for a single node. For several instances: implement the store adapter on Postgres (the document
-splits along its arrays into tables), move the bus to Postgres `LISTEN/NOTIFY` or Redis, and run
-agent runs from a queue instead of inside the request. None of that touches `domain`, the agent or
-the UI.
-
-## Limits you should know
-
-- **No authentication.** The app is single-user and holds financial data. Do not expose it publicly
-  as it is.
-- **Indian bank accounts.** Plaid does not cover India. The Setu Account Aggregator connector is
-  written against Setu's documented API but has not been run, and Setu grants production access
-  only to RBI, SEBI, IRDAI or PFRDA regulated entities. For an Indian account, statement upload is
-  the route that works today.
-- **Statements** are read as CSV or delimited text. PDF and Excel exports are not supported.
-- **Usage** is phone screen time (Android companion) plus time on a service's site in Chrome
-  (browser extension). TV, console and desktop app use are invisible to it.
-- **PayPal** can only act on agreements PayPal manages, and bills subscriptions in USD here (its
-  subscription billing does not support INR), so only dollar-priced plans can be started from here.
-- **Catalog prices** are a built-in snapshot and go stale: US list prices, plus Indian rupee list
-  prices for 23 widely used services. The rupee prices are from memory, not read from the
-  official pages; only Claude and Google AI were checked against them (2026-11-10). Services with
-  no price in the user's currency show the US list price, labelled as such. Live checks replace
-  catalog prices per service once the Gemini key has Google Search grounding quota.
-- **Value scoring** uses per-category "fair cost per hour" benchmarks scaled per currency. They
-  are judgement calls in `domain/intelligence.ts`, not measured data.
-- **Not yet run against the real services:** the Gemini agent loop and Studio assistant, PayPal
-  calls, live plan checks, Plaid, Setu and Spotify. No credentials were available while building. The Android app
-  compiles (`cd android && ./gradlew assembleDebug`) but has not been run on a device.

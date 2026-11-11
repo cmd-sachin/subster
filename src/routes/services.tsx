@@ -6,9 +6,12 @@ import { ConnectionBadge, ConnectionPanel, since } from '@/components/connection
 import { FitCheck } from '@/components/fit-check';
 import { useApp } from '@/components/app-state';
 import { CATEGORY_ICON } from '@/components/category-icon';
+import { acceptsPayPal, PAYPAL_ACCEPTANCE, PAYPAL_CHECKED_ON } from '@/domain/paypal-acceptance.gen';
 import { CATALOG, catalogPlans, webDomains, CATEGORIES, CATEGORY_LABEL, type Provider } from '@/domain/catalog';
 import { cycleShort, money, shortDate, today } from '@/domain/dates';
 import type { AppState, BillingCycle, Category, Insight, LivePlan } from '@/domain/types';
+import { Loader } from '@/components/loader';
+import { PayPalMark } from '@/components/paypal-mark';
 
 /** "3 minutes ago", "2 days ago". */
 function ago(iso: string) {
@@ -27,7 +30,7 @@ const VERDICT_LABEL = { great: 'Good value', fair: 'Fair value', poor: 'Low valu
 function Services() {
   const { state, refresh } = useApp();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category | 'all' | 'mine'>('all');
+  const [category, setCategory] = useState<Category | 'all' | 'mine' | 'paypal'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
 
   const mine = useMemo(() => new Map((state?.portfolio.insights ?? []).filter((i) => i.sub.providerId && i.sub.status !== 'cancelled').map((i) => [i.sub.providerId!, i])), [state]);
@@ -38,10 +41,18 @@ function Services() {
     const timer = setInterval(() => void refresh(), 30_000);
     return () => clearInterval(timer);
   }, [anyLive, refresh]);
-  if (!state) return <p className="p-8 text-muted">Loading services</p>;
+  if (!state) return <Loader label="Loading services" />;
 
   const needle = query.trim().toLowerCase();
-  const visible = CATALOG.filter((app) => (!needle || app.name.toLowerCase().includes(needle)) && (category === 'all' || (category === 'mine' ? mine.has(app.id) : app.category === category)));
+  // The PayPal mark on a service means its own help pages say it accepts PayPal where the user
+  // is (see domain/paypal-acceptance.gen.ts). "one tap" is added when the user's own subscription
+  // already runs on a PayPal agreement that can be paused or cancelled from here.
+  const paypalOf = (app: Provider): 'managed' | 'accepted' | null => {
+    if (mine.get(app.id)?.sub.paypalSubscriptionId) return 'managed';
+    return acceptsPayPal(app.id, state.settings.currency) ? 'accepted' : null;
+  };
+  const paypalCount = CATALOG.filter((app) => paypalOf(app)).length;
+  const visible = CATALOG.filter((app) => (!needle || app.name.toLowerCase().includes(needle)) && (category === 'all' || (category === 'mine' ? mine.has(app.id) : category === 'paypal' ? paypalOf(app) !== null : app.category === category)));
   const groups = CATEGORIES.map((c) => ({ category: c, apps: visible.filter((a) => a.category === c) })).filter((g) => g.apps.length > 0);
   const open = CATALOG.find((a) => a.id === openId);
 
@@ -49,9 +60,8 @@ function Services() {
     <div className="mx-auto max-w-[1320px] px-4 py-7 md:px-8">
       <header>
         <h1 className="text-[26px] font-semibold tracking-tight">Services</h1>
-        <p className="mt-1.5 max-w-3xl text-[14px] leading-relaxed text-muted">
-          Every subscription service Subster knows: {CATALOG.length} of them across {CATEGORIES.length} categories. Open one to see its current plans, what you pay, sign in to your account
-          there, or start a subscription through PayPal. You can also just tell the agent, for example "subscribe to Spotify Premium Duo".
+        <p className="mt-1.5 text-[14px] text-muted">
+          {CATALOG.length} services. Those marked <PayPalMark /> accept PayPal, according to their own help pages.
         </p>
       </header>
 
@@ -66,6 +76,9 @@ function Services() {
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Category">
           <Chip active={category === 'all'} onClick={() => setCategory('all')}>
             All <span className="num text-faint">{CATALOG.length}</span>
+          </Chip>
+          <Chip active={category === 'paypal'} onClick={() => setCategory('paypal')}>
+            <PayPalMark /> <span className="num text-faint">{paypalCount}</span>
           </Chip>
           <Chip active={category === 'mine'} onClick={() => setCategory('mine')}>
             Yours <span className="num text-faint">{mine.size}</span>
@@ -84,7 +97,7 @@ function Services() {
         const Icon = CATEGORY_ICON[group.category];
         return (
           <section key={group.category} className="mt-8" aria-label={CATEGORY_LABEL[group.category]}>
-            <h2 className="flex items-center gap-2 text-[13px] font-medium uppercase tracking-[0.14em] text-faint">
+            <h2 className="flex items-center gap-2 text-[13px] font-medium text-faint">
               <Icon size={15} strokeWidth={1.75} aria-hidden="true" />
               {CATEGORY_LABEL[group.category]}
             </h2>
@@ -107,6 +120,12 @@ function Services() {
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         {insight && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">Subscribed</span>}
+                        {paypalOf(app) && (
+                          <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px]" title={paypalOf(app) === 'managed' ? 'Paid through PayPal: pause or cancel in one tap' : `${app.name} accepts PayPal`}>
+                            <PayPalMark />
+                            {paypalOf(app) === 'managed' && <span className="ml-1 text-muted">one tap</span>}
+                          </span>
+                        )}
                         {connection && <ConnectionBadge connection={connection} />}
                       </span>
                     </button>
@@ -220,6 +239,26 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
             </Section>
           )}
 
+          {PAYPAL_ACCEPTANCE[app.id] && (
+            <Section title="PayPal" note={`Checked ${shortDate(PAYPAL_CHECKED_ON)}`}>
+              <p className="flex items-start gap-2 text-[13px] leading-relaxed">
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${acceptsPayPal(app.id, state.settings.currency) ? 'bg-good' : 'bg-faint'}`} aria-hidden="true" />
+                <span>
+                  <span className="font-medium">
+                    {acceptsPayPal(app.id, state.settings.currency) ? `${app.name} accepts PayPal` : PAYPAL_ACCEPTANCE[app.id].accepts ? `${app.name} accepts PayPal, but not in your country` : `${app.name} does not take PayPal`}
+                  </span>
+                  {PAYPAL_ACCEPTANCE[app.id].note && <span className="block text-muted">{PAYPAL_ACCEPTANCE[app.id].note}</span>}
+                  <a href={PAYPAL_ACCEPTANCE[app.id].source} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[12px] text-accent underline-offset-2 hover:underline">
+                    {app.name}&apos;s own page <ExternalLink size={11} aria-hidden="true" />
+                  </a>
+                </span>
+              </p>
+              {insight && !insight.sub.paypalSubscriptionId && acceptsPayPal(app.id, state.settings.currency) && (
+                <p className="mt-2.5 rounded-xl bg-accent-soft px-3 py-2 text-[12px] leading-relaxed">You could pay for this with PayPal and manage the automatic payment from your PayPal account.</p>
+              )}
+            </Section>
+          )}
+
           <Section title="Plans" note={official ? `Official site, ${live.region}` : plans.length > 0 ? (regional ? 'Built-in catalog, not live' : 'US list prices, not live') : undefined}>
             {official ? (
               <p className="mb-2.5 text-[12px] leading-relaxed text-muted">
@@ -234,7 +273,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                     )
                   </>
                 )}
-                .{live.error && <span className="text-warn"> The latest re-check failed: {live.error}</span>}
+                .{live.error && <span className="text-muted"> The latest re-check did not go through.</span>}
               </p>
             ) : (
               <p className="mb-2.5 text-[12px] leading-relaxed text-muted">
@@ -243,7 +282,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                     ? `These prices are from the built-in catalog and may be out of date.`
                     : `These are US dollar list prices from the built-in catalog. They may be out of date and are not what ${app.name} charges in your region.`
                   : `Subster has no confirmed price list for ${app.name}, so none is guessed here.`}{' '}
-                {live?.error && <span className="text-warn">The last check of the official site failed: {live.error}</span>}
+                {live?.error && <span>The official site could not be read just now.</span>}
               </p>
             )}
             {live?.changes && live.changes.length > 0 && (
@@ -278,9 +317,9 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                           onClick={() => run(`sub-${p.name}`, '/api/services', { intent: 'subscribe', providerId: app.id, plan: p.name }, `Sent to your inbox. Approve it there, then confirm at PayPal.`)}
                           disabled={busy !== null || paypalOff}
                           title={paypalOff ? 'Connect PayPal first' : undefined}
-                          className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90 disabled:opacity-40"
+                          className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
                         >
-                          {busy === `sub-${p.name}` ? 'Sending' : 'Subscribe via PayPal'}
+                          {busy === `sub-${p.name}` ? 'Sending' : 'Start with PayPal'}
                         </button>
                       )
                     )}
@@ -292,12 +331,12 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
               <Small busy={busy === 'plans'} onClick={() => run('plans', '/api/service-plans', { providerId: app.id }, `Plans updated from ${app.name}'s official site.`)}>
                 {official ? 'Check official site again' : 'Check official site now'}
               </Small>
-              {!state.integrations.planMonitor && <span className="text-[12px] text-warn">Live checks need GEMINI_API_KEY in .env.local.</span>}
             </div>
-            {!insight && plans.some((p) => p.currency !== 'USD') && (
-              <p className="mt-2 text-[12px] text-muted">Plans priced in {plans.find((p) => p.currency !== 'USD')?.currency} are started on {app.name}'s own site: PayPal subscription billing only supports US dollars here.</p>
+            {!insight && !paypalOff && plans.some((p) => p.currency === 'USD') && (
+              <p className="mt-2 text-[12px] leading-relaxed text-muted">Started here, the plan is billed by Subster through a PayPal agreement in dollars. That is what makes pausing and cancelling one tap. It does not open an account at {app.name}.</p>
             )}
-            {paypalOff && !insight && plans.some((p) => p.currency === 'USD') && <p className="mt-2 text-[12px] text-warn">PayPal is not connected, so new subscriptions cannot be started from here yet. Add your PayPal keys in .env.local.</p>}
+            {!insight && plans.some((p) => p.currency !== 'USD') && <p className="mt-2 text-[12px] text-muted">Plans in {plans.find((p) => p.currency !== 'USD')?.currency} are started on {app.name}&apos;s own site.</p>}
+            {paypalOff && !insight && plans.some((p) => p.currency === 'USD') && <p className="mt-2 text-[12px] text-muted">Starting a subscription from here needs PayPal, which is not connected yet.</p>}
           </Section>
 
           {!insight && (
@@ -370,7 +409,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                 </p>
               )}
               {connection.auth.status === 'signed_out' && connection.auth.via === 'browser' && (
-                <a href={app.manageUrl} target="_blank" rel="noreferrer" className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90">
+                <a href={app.manageUrl} target="_blank" rel="noreferrer" className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90">
                   Sign in at {app.name} <ExternalLink size={12} aria-hidden="true" />
                 </a>
               )}
@@ -405,7 +444,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                       <KeyRound size={14} aria-hidden="true" /> Sign in with Spotify
                     </a>
                   ) : (
-                    <p className="text-[12px] text-warn">Spotify sign-in needs SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.local (free at developer.spotify.com).</p>
+                    <p className="text-[12px] text-muted">Spotify sign-in is not available yet.</p>
                   )}
                 </div>
               )
@@ -437,7 +476,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2.5 flex items-baseline justify-between text-[12px] font-medium uppercase tracking-[0.12em] text-faint">
+      <h3 className="mb-2.5 flex items-baseline justify-between text-[12px] font-medium text-faint">
         {title}
         {note && <span className="normal-case tracking-normal">{note}</span>}
       </h3>

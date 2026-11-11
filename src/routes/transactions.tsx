@@ -5,6 +5,7 @@ import { AppLogo } from '@/components/app-logo';
 import { useApp } from '@/components/app-state';
 import { addDays, cycleShort, diffDays, money, shortDate, today } from '@/domain/dates';
 import type { AppState, Charge, PaymentRail, RefundReason, RefundRequest, Subscription } from '@/domain/types';
+import { Loader } from '@/components/loader';
 
 export const Route = createFileRoute('/transactions')({ component: Transactions });
 
@@ -46,7 +47,7 @@ function Transactions() {
   const [recording, setRecording] = useState(false);
 
   const subs = useMemo(() => new Map((state?.portfolio.insights ?? []).map((i) => [i.sub.id, i.sub])), [state]);
-  if (!state) return <p className="p-8 text-muted">Loading transactions</p>;
+  if (!state) return <Loader label="Loading transactions" />;
 
   const now = today();
   const refundOf = (chargeId: string) => state.refunds.find((r) => r.chargeId === chargeId);
@@ -100,7 +101,7 @@ function Transactions() {
           <button onClick={exportCsv} disabled={visible.length === 0} className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[13px] font-medium hover:bg-white/[0.07] disabled:opacity-40">
             <Download size={14} aria-hidden="true" /> Export CSV
           </button>
-          <button onClick={() => setRecording(true)} disabled={subs.size === 0} className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-canvas hover:opacity-90 disabled:opacity-40">
+          <button onClick={() => setRecording(true)} disabled={subs.size === 0} className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-40">
             <Plus size={15} strokeWidth={2.5} aria-hidden="true" /> Record a payment
           </button>
         </div>
@@ -243,7 +244,7 @@ function PaymentsTable({ charges, total, subs, refundOf, onOpen }: { charges: Ch
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-[13px]">
-        <thead className="text-[11px] uppercase tracking-wide text-faint">
+        <thead className="text-[11px] text-faint">
           <tr>
             <th className="px-4 py-2 font-medium">Date</th>
             <th className="px-2 py-2 font-medium">Subscription</th>
@@ -475,7 +476,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                 want it.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
+                <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
                   Update payment at {sub.name} <ExternalLink size={13} aria-hidden="true" />
                 </a>
                 <Quiet busy={busy === 'paid'} onClick={() => run('paid', { intent: 'mark', chargeId: charge.id, status: 'paid' }, 'Marked as paid.')}>
@@ -517,7 +518,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                       <span className="mb-1 block text-[11px] text-faint">Anything to add (optional)</span>
                       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={600} className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[13px]" />
                     </label>
-                    <button type="submit" disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50">
+                    <button type="submit" disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
                       {busy === 'refund' ? 'Writing' : 'Write the refund request'}
                     </button>
                   </form>
@@ -569,13 +570,13 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                       </p>
                       <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
                         {refund.status === 'drafted' && (
-                          <button onClick={() => run('sent', { intent: 'refund_status', refundId: refund.id, status: 'sent' }, 'Noted as sent.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50">
+                          <button onClick={() => run('sent', { intent: 'refund_status', refundId: refund.id, status: 'sent' }, 'Noted as sent.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
                             I have sent it
                           </button>
                         )}
                         {refund.status === 'sent' && (
                           <>
-                            <button onClick={() => run('got', { intent: 'refund_status', refundId: refund.id, status: 'refunded' }, 'Recorded. This payment now shows as refunded.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50">
+                            <button onClick={() => run('got', { intent: 'refund_status', refundId: refund.id, status: 'refunded' }, 'Recorded. This payment now shows as refunded.')} disabled={busy !== null} className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
                               The refund arrived
                             </button>
                             <Quiet busy={busy === 'declined'} onClick={() => run('declined', { intent: 'refund_status', refundId: refund.id, status: 'declined' }, 'Recorded as declined.')}>
@@ -603,7 +604,7 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
                     <span className="font-medium">{guided.title}:</span> one step is left for you. {sub.paypalSubscriptionId ? 'PayPal could not do this one for you.' : `${sub.name} is not billed through PayPal, so it has to be done on its own site.`}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-canvas hover:opacity-90">
+                    <a href={sub.cancelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90">
                       Open {sub.name} account page <ExternalLink size={13} aria-hidden="true" />
                     </a>
                     <Quiet
@@ -748,7 +749,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
           <button type="button" onClick={onClose} className="rounded-lg border border-white/10 px-3 py-2 text-[13px] hover:bg-white/[0.07]">
             Close
           </button>
-          <button type="submit" disabled={busy} className="rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-canvas hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={busy} className="rounded-lg bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50">
             {busy ? 'Saving' : 'Record payment'}
           </button>
         </div>
@@ -760,7 +761,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">{title}</h3>
+      <h3 className="mb-2 text-[11px] font-medium text-faint">{title}</h3>
       {children}
     </section>
   );

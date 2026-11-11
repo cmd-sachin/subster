@@ -20,7 +20,7 @@ export interface SyncOutcome extends IngestResult {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function requireProvider(provider: BankProvider) {
-  if (!availableBanks().includes(provider)) throw new HttpError(503, `${provider === 'plaid' ? 'Plaid' : 'Setu'} is not configured. Add its keys to .env.local.`);
+  if (!availableBanks().includes(provider)) throw new HttpError(503, 'Bank linking is not available yet.');
   return connectorFor(provider);
 }
 

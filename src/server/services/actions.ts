@@ -5,7 +5,7 @@
 
 import { providerById } from '@/domain/catalog';
 import { addDays, cycleShort, money, round, today } from '@/domain/dates';
-import { analyze, monthlyCost } from '@/domain/intelligence';
+import { analyze, monthlyCost, standingDecline } from '@/domain/intelligence';
 import type { ActionStep, ActionType, AgentAction, Subscription } from '@/domain/types';
 import { HttpError } from '@/server/http';
 import { changeSubscription, createAgreement, getSubscriptionStatus, paypalMode } from '@/server/integrations/paypal';
@@ -53,6 +53,9 @@ export async function createProposal(input: ProposalInput): Promise<ProposalResu
   if (existing) return { ok: true, action: existing, outcome: 'already_pending' };
 
   const insight = analyze(data).insights.find((i) => i.sub.id === sub.id)!;
+  // The user's own request always goes through; the agent has to respect an earlier "no".
+  const declined = input.by === 'user' ? undefined : standingDecline(data, sub.id, input.type, sub.price, insight.hours30, today());
+  if (declined) return { ok: false, error: `The user declined to ${declined.type} ${sub.name} on ${declined.at.slice(0, 10)} and nothing has changed since (same price, similar use). Do not propose it again; leave it alone.` };
   const savingsMonthly =
     input.type === 'downgrade' && sub.cheaperPlan ? round(insight.monthlyCost - sub.cheaperPlan.price) : input.type === 'cancel' || input.type === 'pause' ? insight.monthlyCost : 0;
 
@@ -116,7 +119,7 @@ export function proposeSubscription(input: { providerId: string; planName?: stri
     channel: 'paypal_api',
     createdAt: new Date().toISOString(),
     runId: input.runId,
-    steps: [step('Proposed by the agent', true, input.reason)],
+    steps: [step(input.runId ? 'Proposed by the agent' : 'Requested by you', true, input.reason)],
   };
   data.actions.unshift(action);
   save('subscription proposed');
@@ -151,7 +154,7 @@ export async function execute(actionId: string, approvedBy: 'user' | 'policy', o
   const op = action.type === 'cancel' ? 'cancel' : action.type === 'pause' ? 'suspend' : 'activate';
   const expected = op === 'cancel' ? 'CANCELLED' : op === 'suspend' ? 'SUSPENDED' : 'ACTIVE';
   try {
-    action.steps.push(step(`Calling PayPal (${paypalMode()}): ${op} ${sub.paypalSubscriptionId}`, true));
+    action.steps.push(step(`Asking PayPal to ${op === 'suspend' ? 'pause' : op === 'activate' ? 'resume' : 'cancel'} agreement ${sub.paypalSubscriptionId}`, true));
     const { before, after } = await changeSubscription(sub.paypalSubscriptionId!, op, `Subster: ${action.reason}`.slice(0, 127));
     const verified = after === expected;
     action.steps.push(step(`Verified with PayPal: ${before} to ${after}`, verified, verified ? undefined : `Expected ${expected}`));
@@ -178,7 +181,7 @@ async function startSubscription(action: AgentAction, origin: string): Promise<A
   const plan = action.plan;
   try {
     if (!provider || !plan) throw new Error('The app or plan for this proposal is no longer in the catalog.');
-    action.steps.push(step(`Calling PayPal (${paypalMode()}): create ${plan.cycle} plan and agreement`, true));
+    action.steps.push(step(`Asking PayPal to create a ${plan.cycle} plan and agreement`, true));
     const base = process.env.PUBLIC_URL?.replace(/\/$/, '') || origin;
     const agreement = await createAgreement({
       name: `${provider.name} ${plan.name}`,
@@ -237,6 +240,13 @@ export function reject(actionId: string): AgentAction {
     action.approveUrl = undefined;
     action.resolvedAt = new Date().toISOString();
     action.steps.push(step('Declined by you. No change made.', true));
+    // Remembered, so the same suggestion does not come back while nothing has changed.
+    const insight = analyze(db()).insights.find((i) => i.sub.id === action.subId);
+    if (action.type !== 'subscribe' && insight) {
+      const data = db();
+      data.declines = [{ subId: action.subId, type: action.type, at: new Date().toISOString(), price: insight.sub.price, hours30: insight.hours30 }, ...(data.declines ?? []).filter((d) => !(d.subId === action.subId && d.type === action.type))].slice(0, 200);
+      action.steps.push(step('Noted. This will not be suggested again unless the price or your use changes.', true));
+    }
     save('action rejected');
     log.info('actions', `Declined: ${action.title}`, { actionId });
   }

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Activity, Banknote, Bot, Check, Copy, Download, ExternalLink, FlaskConical, Globe, KeyRound, Landmark, RefreshCw, Settings2, Smartphone, Tags, Trash2 } from 'lucide-react';
+import { Activity, Banknote, Bot, Download, ExternalLink, FlaskConical, Globe, KeyRound, Landmark, RefreshCw, Settings2, Smartphone, Tags, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
 import { ConnectionBadge, since } from '@/components/connection';
@@ -7,6 +7,7 @@ import { useApp, type MutateResult } from '@/components/app-state';
 import { CATEGORY_LABEL, providerById, webDomains } from '@/domain/catalog';
 import { diffDays, money, today } from '@/domain/dates';
 import type { AppState, Currency, Subscription } from '@/domain/types';
+import { Loader } from '@/components/loader';
 
 export const Route = createFileRoute('/connect')({ component: Connections });
 
@@ -55,10 +56,7 @@ function Connections() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [mobile, setMobile] = useState('');
-  const [testText, setTestText] = useState('');
-  const [testAmount, setTestAmount] = useState('');
-  const [copied, setCopied] = useState<string | null>(null);
-  if (!state) return <p className="p-8 text-muted">Loading connections</p>;
+  if (!state) return <Loader label="Loading connections" />;
 
   const subs = state.portfolio.insights.map((i) => i.sub).filter((s) => s.status !== 'cancelled');
   const reportOf = (source: 'web' | 'android') => {
@@ -75,7 +73,6 @@ function Connections() {
   const managed = subs.filter((s) => s.paypalSubscriptionId);
   const lastPayPalEvent = state.integrations.webhookLog.find((e) => e.source === 'paypal');
   const liveChecks = Object.values(state.livePlans);
-  const origin = typeof window === 'undefined' ? '' : window.location.origin;
   const ago = (date: string | null) => (date ? (diffDays(today(), date) <= 0 ? 'today' : `${diffDays(today(), date)} day${diffDays(today(), date) === 1 ? '' : 's'} ago`) : 'never');
 
   const { bank, paypal, webhookLog } = state.integrations;
@@ -88,13 +85,6 @@ function Connections() {
     const res = await fn();
     setNotice(res.ok ? { ok: true, text: done(res.data) } : { ok: false, text: res.error ?? 'Something went wrong' });
     setBusy(null);
-  }
-
-  function copy(key: string, text: string) {
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1500);
-    });
   }
 
   async function checkPayPal() {
@@ -161,16 +151,16 @@ function Connections() {
       <header>
         <p className="eyebrow">Sources and settings</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]">Connections</h1>
-        <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted">Where Subster gets its facts: money from your bank and PayPal, usage from your browser and phone. Each source says what it is doing and what it still needs.</p>
+        <p className="mt-1.5 text-[14px] text-muted">Your bank, PayPal, browser and phone, in one place.</p>
       </header>
 
       <nav aria-label="Connection status" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Health href="#bank" icon={Landmark} name="Bank" ok={Boolean(bank.link)} status={bank.link ? bank.link.institution : 'Not linked'} detail={bank.link ? `synced ${bank.link.lastSyncAt ? ago(bank.link.lastSyncAt.slice(0, 10)) : 'never'}` : `${bank.transactionCount} payments imported`} />
-        <Health href="#paypal" icon={Banknote} name="PayPal" ok={paypal !== 'off'} status={paypal === 'off' ? 'Not connected' : paypal === 'live' ? 'Live' : 'Sandbox'} detail={`${managed.length} agreement${managed.length === 1 ? '' : 's'} managed`} />
+        <Health href="#paypal" icon={Banknote} name="PayPal" ok={paypal !== 'off'} status={paypal === 'off' ? 'Not connected' : paypal === 'live' ? 'Live' : 'Test mode'} detail={`${managed.length} agreement${managed.length === 1 ? '' : 's'} managed`} />
         <Health href="#browser" icon={Globe} name="Browser usage" ok={web.days > 0} status={web.days > 0 ? 'Reporting' : 'Not reporting'} detail={web.days > 0 ? `last report ${ago(web.last)}` : `${webSites.length} site${webSites.length === 1 ? '' : 's'} to measure`} />
         <Health href="#phone" icon={Smartphone} name="Phone usage" ok={phone.days > 0} status={phone.days > 0 ? 'Reporting' : 'Not reporting'} detail={phone.days > 0 ? `last report ${ago(phone.last)}` : `${phoneApps.length} app${phoneApps.length === 1 ? '' : 's'} to measure`} />
-        <Health href="#agent" icon={Bot} name="Agent" ok={state.integrations.agent === 'gemini'} status={state.integrations.agent === 'gemini' ? 'Gemini' : 'Rules engine'} detail={`${state.runs.length} run${state.runs.length === 1 ? '' : 's'} so far`} />
-        <Health href="#agent" icon={Tags} name="Live prices" ok={liveChecks.some((l) => l.status === 'ok')} status={!state.integrations.planMonitor ? 'No API key' : liveChecks.some((l) => l.status === 'ok') ? 'Working' : liveChecks.length ? 'Checks failing' : 'Not run yet'} detail={`${liveChecks.filter((l) => l.status === 'ok').length} services read`} />
+        <Health href="#agent" icon={Bot} name="Assistant" ok={state.integrations.agent === 'gemini'} status={state.integrations.agent === 'gemini' ? 'On' : 'Basic'} detail={`${state.runs.length} run${state.runs.length === 1 ? '' : 's'} so far`} />
+        <Health href="#agent" icon={Tags} name="Live prices" ok={liveChecks.some((l) => l.status === 'ok')} status={!state.integrations.planMonitor && !liveChecks.some((l) => l.status === 'ok') ? 'Off' : liveChecks.some((l) => l.status === 'ok') ? 'Working' : 'Starting'} detail={`${liveChecks.filter((l) => l.status === 'ok').length} services read`} />
       </nav>
 
       {(notice || returned) && (
@@ -179,7 +169,7 @@ function Connections() {
         </p>
       )}
 
-      <Group title="Money" note="How Subster learns what you pay, and where it can act for you.">
+      <Group title="Money" note="What you pay">
         <Card id="bank" icon={Landmark} title="Bank account" badge={bank.link ? 'Linked' : 'Not linked'} live={Boolean(bank.link)}>
         {bank.link ? (
           <>
@@ -198,31 +188,11 @@ function Connections() {
                 Unlink
               </Button>
             </div>
-            {bank.link.provider === 'plaid' && bank.plaidSandbox && (
-              <div className="mt-5 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-                <h3 className="text-[13px] font-semibold">Plaid sandbox: post a test transaction</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                  This account is Plaid's test institution. You can ask Plaid to post a transaction to it and watch it come back through the normal sync. This control disappears on
-                  production keys.
-                </p>
-                <div className="mt-3 flex flex-wrap items-end gap-2">
-                  <Field label="Statement text">
-                    <input value={testText} onChange={(e) => setTestText(e.target.value)} placeholder="NETFLIX.COM" className="w-56 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] placeholder:text-faint" />
-                  </Field>
-                  <Field label="Amount">
-                    <input value={testAmount} onChange={(e) => setTestAmount(e.target.value)} inputMode="decimal" placeholder="15.49" className="w-28 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] placeholder:text-faint" />
-                  </Field>
-                  <Button busy={busy === 'test'} onClick={() => act('test', () => mutate('/api/bank/sandbox-transaction', { description: testText, amount: Number(testAmount) }), describeSync)}>
-                    Post and sync
-                  </Button>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            <Option title="Plaid" subtitle="US, Canada, UK and Europe" ready={bank.available.includes('plaid')} missing="Add PLAID_CLIENT_ID and PLAID_SECRET to .env.local (dashboard.plaid.com). Real accounts need Plaid production access; sandbox keys link Plaid's test bank.">
-              <p className="text-[13px] leading-relaxed text-muted">You sign in to your bank inside Plaid's own window. Subster receives read-only transaction access and never sees your banking password.</p>
+            <Option title="Plaid" subtitle="US, Canada, UK and Europe" ready={bank.available.includes('plaid')} missing="Not available yet.">
+              <p className="text-[13px] text-muted">Sign in inside your bank&apos;s own window. Read-only.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button primary busy={busy === 'plaid'} onClick={linkWithPlaid}>
                   Link my bank with Plaid
@@ -234,8 +204,8 @@ function Connections() {
                 )}
               </div>
             </Option>
-            <Option title="Account Aggregator" subtitle="Indian banks, through Setu" ready={bank.available.includes('setu')} missing="Add SETU_CLIENT_ID, SETU_CLIENT_SECRET and SETU_PRODUCT_INSTANCE_ID to .env.local (bridge.setu.co). Setu only issues production access to RBI, SEBI, IRDAI or PFRDA regulated entities; sandbox keys work with Setu's test banks.">
-              <p className="text-[13px] leading-relaxed text-muted">You approve a consent request in your Account Aggregator app. The consent is read-only, time-limited and can be revoked there.</p>
+            <Option title="Account Aggregator" subtitle="Indian banks, through Setu" ready={bank.available.includes('setu')} missing="Not available yet.">
+              <p className="text-[13px] text-muted">Approve a read-only request in your Account Aggregator app.</p>
               <div className="mt-3 flex flex-wrap items-end gap-2">
                 <Field label="Mobile number registered with your bank">
                   <input value={mobile} onChange={(e) => setMobile(e.target.value)} inputMode="numeric" autoComplete="tel-national" placeholder="10 digits" className="w-44 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] placeholder:text-faint" />
@@ -261,7 +231,7 @@ function Connections() {
 
         {bank.candidates.length > 0 && (
           <div className="mt-5">
-            <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-faint">Regular payments that might be subscriptions</h3>
+            <h3 className="text-[12px] font-medium text-faint">Regular payments that might be subscriptions</h3>
             <ul className="mt-2 space-y-2">
               {bank.candidates.map((c) => (
                 <li key={c.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-[13px]">
@@ -294,19 +264,18 @@ function Connections() {
           )}
         </Card>
 
-        <Card id="paypal" icon={Banknote} title="PayPal" badge={paypal === 'off' ? 'Not connected' : paypal === 'live' ? 'Live' : 'Sandbox'} live={paypal !== 'off'}>
+        <Card id="paypal" icon={Banknote} title="PayPal" badge={paypal === 'off' ? 'Not connected' : paypal === 'live' ? 'Live' : 'Test mode'} live={paypal !== 'off'}>
           {paypal === 'off' ? (
             <>
-              <p className="text-[13px] leading-relaxed text-muted">With PayPal connected, Subster starts, pauses, cancels and resumes PayPal agreements you approve, and verifies each change by reading the agreement back. Without it, those changes are handed to you with a link.</p>
-              <Steps items={['Create a REST app at developer.paypal.com and copy its client ID and secret.', 'Add PAYPAL_CLIENT_ID and PAYPAL_SECRET to .env.local.', 'Restart the server. This card turns green.']} />
+              <p className="text-[13px] text-muted">Not connected yet. With PayPal, pausing and cancelling take one tap and are confirmed for you.</p>
             </>
           ) : (
             <>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-4">
-                <Fact label="Environment" value={paypal === 'live' ? 'Production' : 'Sandbox'} />
+                <Fact label="Mode" value={paypal === 'live' ? 'Live' : 'Test'} />
                 <Fact label="Agreements managed" value={String(managed.length)} />
                 <Fact label="Last webhook" value={lastPayPalEvent ? new Date(lastPayPalEvent.at).toLocaleString() : 'None received'} />
-                <Fact label="Can do for you" value="Start, pause, cancel, resume" />
+                <Fact label="One tap" value="Start, pause, cancel" />
               </dl>
               {managed.length > 0 && (
                 <ul className="mt-3 flex flex-wrap gap-2">
@@ -317,24 +286,13 @@ function Connections() {
                   ))}
                 </ul>
               )}
-              <div className="mt-4">
-                <span className="mb-1 block text-[11px] text-faint">Webhook address to register in the PayPal dashboard</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 truncate rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 font-mono text-[12px]">{origin}/api/paypal/webhook</code>
-                  <Button onClick={() => copy('hook', `${origin}/api/paypal/webhook`)}>
-                    <Copy size={13} className="mr-1.5 inline" aria-hidden="true" />
-                    {copied === 'hook' ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-                <p className="mt-1.5 text-[12px] text-faint">PayPal can only reach a public https address. On this machine, run the gateway and tunnel and register the tunnel address instead. Events must verify against PAYPAL_WEBHOOK_ID.</p>
-              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button busy={busy === 'paypal'} onClick={checkPayPal}>
                   <RefreshCw size={14} className="mr-1.5 inline" aria-hidden="true" />
-                  Test the connection
+                  Check connection
                 </Button>
                 <Link to="/transactions" className="rounded-xl border border-white/10 px-3 py-2 text-[13px] font-medium hover:bg-white/[0.07]">
-                  Open the PayPal ledger
+                  PayPal activity
                 </Link>
               </div>
             </>
@@ -342,7 +300,7 @@ function Connections() {
         </Card>
       </Group>
 
-      <Group title="Usage" note="How Subster learns what you actually use. Without usage, a subscription cannot be scored.">
+      <Group title="Usage" note="What you use">
         <section className="panel p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-[14px] font-semibold">
@@ -398,7 +356,7 @@ function Connections() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card id="browser" icon={Globe} title="Browser extension" badge={web.days > 0 ? `Last report ${ago(web.last)}` : 'Not reporting'} live={web.days > 0}>
-            <p className="text-[13px] leading-relaxed text-muted">Reports live when one of your subscription sites is open, measures time on it (including music in a background tab), and checks whether you are signed in there. It sends totals and yes or no answers only: no page addresses, titles, content or cookie values.</p>
+            <p className="text-[13px] text-muted">Sees which subscription sites you use and whether you are signed in. Totals only.</p>
             {web.days > 0 ? (
               <dl className="mt-3 grid grid-cols-3 gap-x-6 text-[13px]">
                 <Fact label="Subscriptions reported" value={String(web.subs)} />
@@ -406,13 +364,13 @@ function Connections() {
                 <Fact label="Sites it can measure" value={String(webSites.length)} />
               </dl>
             ) : (
-              <Steps items={['Open chrome://extensions and turn on Developer mode.', 'Choose "Load unpacked" and pick the extension folder of this project.', `Open its popup and press "Sync now". It reports to ${origin || 'this server'}.`, 'Press "Monitor sign-in" in the popup to let it tell signed in from signed out on those sites.']} />
+              <Steps items={['Add the Subster extension to Chrome.', 'Open it and press Sync now.', 'Press Monitor sign-in.']} />
             )}
-            <SiteList label="It measures" empty="None of your subscriptions has a site of its own to measure." items={webSites.map((s) => ({ sub: s, text: sitesOf(s).join(', ') }))} />
+            <SiteList label="Watching" empty="Nothing to watch yet." items={webSites.map((s) => ({ sub: s, text: sitesOf(s).join(', ') }))} />
           </Card>
 
           <Card id="phone" icon={Smartphone} title="Android companion" badge={phone.days > 0 ? `Last report ${ago(phone.last)}` : 'Not reporting'} live={phone.days > 0}>
-            <p className="text-[13px] leading-relaxed text-muted">Reports daily screen time for your subscription apps only, read from Android&apos;s own usage statistics. No titles, content or passwords.</p>
+            <p className="text-[13px] text-muted">Reports screen time for your subscription apps. Nothing else.</p>
             {phone.days > 0 ? (
               <dl className="mt-3 grid grid-cols-3 gap-x-6 text-[13px]">
                 <Fact label="Subscriptions reported" value={String(phone.subs)} />
@@ -420,14 +378,14 @@ function Connections() {
                 <Fact label="Apps it can measure" value={String(phoneApps.length)} />
               </dl>
             ) : (
-              <Steps items={['Build the app in the android folder and install it on your phone.', 'With the phone on USB, run: adb reverse tcp:3000 tcp:3000, and keep the server address as http://localhost:3000.', 'Allow usage access when the app asks, then tap "Sync now".']} />
+              <Steps items={['Install the Subster companion on your phone.', 'Allow usage access.', 'Tap Sync now.']} />
             )}
-            <SiteList label="It measures" empty="None of your subscriptions has an Android app in the catalog." items={phoneApps.map((s) => ({ sub: s, text: s.androidPackage! }))} />
+            <SiteList label="Watching" empty="Nothing to watch yet." items={phoneApps.map((s) => ({ sub: s, text: s.androidPackage! }))} />
           </Card>
         </div>
 
         <Card id="accounts" icon={KeyRound} title="Linked accounts" badge={`${state.accounts.length}`}>
-          <p className="text-[13px] leading-relaxed text-muted">Your own account at a provider, linked through the provider&apos;s sign-in. Subster never asks for a provider password.</p>
+          <p className="text-[13px] text-muted">Sign in with the provider. Subster never sees a password.</p>
           {state.accounts.length > 0 && (
             <ul className="mt-3 divide-y divide-white/[0.05]">
               {state.accounts.map((a) => {
@@ -464,52 +422,45 @@ function Connections() {
             <Link to="/services" className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-[13px] font-medium hover:bg-white/[0.07]">
               Link an account from Services <ExternalLink size={13} aria-hidden="true" />
             </Link>
-            {!state.integrations.spotify && <span className="text-[12px] text-faint">Spotify sign-in needs SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.local.</span>}
           </div>
         </Card>
       </Group>
 
-      <Group title="Intelligence" note="What reasons over your data.">
-        <Card id="agent" icon={Bot} title="Agent and live prices" badge={state.integrations.agent === 'gemini' ? 'Gemini' : 'Rules engine'} live={state.integrations.agent === 'gemini'}>
+      <Group title="Assistant" note="Works for you in the background">
+        <Card id="agent" icon={Bot} title="Assistant" badge={state.integrations.agent === 'gemini' ? 'On' : 'Basic'} live={state.integrations.agent === 'gemini'}>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-4">
-            <Fact label="Agent engine" value={state.integrations.agent === 'gemini' ? 'Gemini, with tools' : 'Built-in rules'} />
-            <Fact label="Agent runs" value={String(state.runs.length)} />
+            <Fact label="Mode" value={state.integrations.agent === 'gemini' ? 'Full assistant' : 'Built-in rules'} />
+            <Fact label="Audits run" value={String(state.runs.length)} />
             <Fact label="Services with live prices" value={String(liveChecks.filter((l) => l.status === 'ok').length)} />
-            <Fact label="Price checks failing" value={String(liveChecks.filter((l) => l.error).length)} />
+            <Fact label="Subscriptions watched" value={String(subs.length)} />
           </dl>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted">
-            {state.integrations.agent === 'gemini'
-              ? 'The agent reads your subscriptions through tools and can only propose: every change waits for you. Live prices are read from each provider\'s official site with Google Search grounding.'
-              : 'No Gemini key is set, so recommendations come from the built-in rules and prices from the built-in catalog. Add GEMINI_API_KEY to .env.local for the agent and live prices.'}
-          </p>
-          {state.integrations.agent === 'gemini' && (
-            <div className="mt-3">
-              <div className="flex items-baseline justify-between text-[12px] text-muted">
-                <span>
-                  Free AI allowance today, across {state.integrations.ai.keys} key{state.integrations.ai.keys === 1 ? '' : 's'}
-                </span>
-                <span className="num">
-                  {state.integrations.ai.sentToday} of about {state.integrations.ai.dailyAllowance} requests used
-                </span>
-              </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.08]" role="img" aria-label={`${state.integrations.ai.sentToday} of about ${state.integrations.ai.dailyAllowance} requests used`}>
-                <div className={`h-full rounded-full ${state.integrations.ai.availableAgainAt ? 'bg-bad' : 'bg-accent'}`} style={{ width: `${state.integrations.ai.availableAgainAt ? 100 : Math.min(100, (state.integrations.ai.sentToday / Math.max(1, state.integrations.ai.dailyAllowance)) * 100)}%` }} />
-              </div>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-faint">
-                {state.integrations.ai.availableAgainAt
-                  ? `Used up on every key. Available again around ${new Date(state.integrations.ai.availableAgainAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Until then recommendations come from the built-in rules.`
-                  : `Counted since the server started. An audit uses a handful of requests, a fit check two or three. Add more keys as GEMINI_API_KEYS in .env.local, separated by commas.`}
+          <p className="mt-3 text-[13px] text-muted">It can only propose. Every change waits for you.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] px-3.5 py-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium">Daily audit</p>
+              <p className="text-[12px] leading-relaxed text-muted">
+                Checks everything once a day and brings what matters to your inbox.{' '}
+                {state.settings.dailyAudit === false ? 'Switched off.' : state.monitor.lastScheduledAuditAt ? `Last ran ${since(state.monitor.lastScheduledAuditAt)}.` : 'Has not run yet.'}
               </p>
             </div>
-          )}
-          {liveChecks.find((l) => l.error) && <p className="mt-2 text-[12px] leading-relaxed text-warn">Latest price check problem: {liveChecks.find((l) => l.error)!.error}</p>}
+            <div className="flex gap-2">
+              {state.settings.dailyAudit !== false && (
+                <Button busy={busy === 'audit'} onClick={() => act('audit', () => mutate('/api/agent', { mode: 'schedule' }), (data) => (data as { summary?: string }).summary ?? 'Audit finished.')}>
+                  Run it now
+                </Button>
+              )}
+              <Button busy={busy === 'audit-toggle'} onClick={() => act('audit-toggle', () => mutate('/api/settings', { dailyAudit: state.settings.dailyAudit === false }), () => (state.settings.dailyAudit === false ? 'Daily audit is on.' : 'Daily audit is off.'))}>
+                {state.settings.dailyAudit === false ? 'Turn on' : 'Turn off'}
+              </Button>
+            </div>
+          </div>
         </Card>
       </Group>
 
-      <Group title="Preferences and data" note="Everything is stored on this machine.">
+      <Group title="Preferences" note="Your data stays on this device">
         <div className="grid gap-4 lg:grid-cols-2">
           <Card icon={Settings2} title="Your currency">
-            <p className="text-[13px] leading-relaxed text-muted">The currency your own payments are in. Amounts are shown as charged and never converted. Services shows prices for the matching region.</p>
+            <p className="text-[13px] text-muted">Amounts are shown as charged, never converted.</p>
             <div className="mt-3 flex gap-1.5" role="group" aria-label="Currency">
               {(['INR', 'USD', 'EUR', 'GBP'] as Currency[]).map((c) => (
                 <button
@@ -527,12 +478,12 @@ function Connections() {
           <Card icon={FlaskConical} title="Demo data" badge={state.demo ? 'Open' : 'Off'} live={state.demo}>
             <p className="text-[13px] leading-relaxed text-muted">
               {state.demo
-                ? 'You are looking at sample data: 13 made-up subscriptions with a year of payments and 60 days of usage. Your own data is set aside and comes back unchanged when you close the demo.'
-                : 'Fills Subster with 13 made-up subscriptions, a year of payments and 60 days of usage. Your own data is set aside, not erased, and comes back when you close the demo.'}
+                ? 'Sample data is showing. Your own data is safe and returns when you close it.'
+                : 'See Subster with sample subscriptions. Your own data is set aside and comes back.'}
             </p>
             <div className="mt-3">
               <Button busy={busy === 'demo'} onClick={() => act('demo', () => mutate('/api/demo', { open: !state.demo }), () => (state.demo ? 'Demo closed. Your own data is back.' : 'Demo data is open. Savings and Transactions now have something to show.'))}>
-                {state.demo ? 'Close demo and restore my data' : 'Open demo data'}
+                {state.demo ? 'Close demo' : 'Open demo'}
               </Button>
             </div>
           </Card>
@@ -540,14 +491,13 @@ function Connections() {
 
         <Card icon={Activity} title="Recent activity" badge={`${webhookLog.length}`}>
           {webhookLog.length === 0 ? (
-            <p className="text-[13px] text-muted">Nothing yet. Bank syncs and PayPal webhooks are listed here as they are handled.</p>
+            <p className="text-[13px] text-muted">Nothing yet.</p>
           ) : (
             <ul className="divide-y divide-white/[0.05] text-[12px]">
               {webhookLog.map((e, i) => (
                 <li key={i} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
                   <span className="num text-faint">{new Date(e.at).toLocaleString()}</span>
                   <span className={`rounded px-1.5 text-[11px] font-medium uppercase ${e.source === 'bank' ? 'bg-info-soft text-info' : 'bg-warn-soft text-warn'}`}>{e.source}</span>
-                  <span className="font-mono text-[11px] text-muted">{e.type}</span>
                   <span className="min-w-0 flex-1">{e.handled}</span>
                 </li>
               ))}
@@ -599,7 +549,7 @@ function Group({ title, note, children }: { title: string; note: string; childre
   return (
     <section className="space-y-4" aria-label={title}>
       <div className="flex flex-wrap items-baseline gap-x-3 border-b border-white/[0.06] pb-2">
-        <h2 className="text-[13px] font-medium uppercase tracking-[0.14em] text-faint">{title}</h2>
+        <h2 className="text-[13px] font-medium text-faint">{title}</h2>
         <p className="text-[12px] text-faint">{note}</p>
       </div>
       {children}
@@ -621,24 +571,21 @@ function Steps({ items }: { items: string[] }) {
 }
 
 function SiteList({ label, empty, items }: { label: string; empty: string; items: { sub: { id: string; name: string; providerId?: string; category: Subscription['category']; color: string }; text: string }[] }) {
+  if (items.length === 0) return <p className="mt-4 border-t border-white/[0.06] pt-3 text-[12px] text-muted">{empty}</p>;
   return (
-    <div className="mt-4 border-t border-white/[0.06] pt-3">
-      <h3 className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">{label}</h3>
-      {items.length === 0 ? (
-        <p className="mt-1.5 text-[12px] text-muted">{empty}</p>
-      ) : (
-        <ul className="mt-2 space-y-1.5">
-          {items.map(({ sub, text }) => (
-            <li key={sub.id} className="flex items-center gap-2 text-[12px]">
-              <AppLogo providerId={sub.providerId} category={sub.category} color={sub.color} size={20} />
-              <span className="font-medium">{sub.name}</span>
-              <span className="min-w-0 truncate font-mono text-[11px] text-faint">{text}</span>
-              <Check size={12} className="ml-auto shrink-0 text-faint" aria-hidden="true" />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <details className="mt-4 border-t border-white/[0.06] pt-3">
+      <summary className="cursor-pointer text-[12px] font-medium text-muted hover:text-ink">
+        {label} {items.length} service{items.length === 1 ? '' : 's'}
+      </summary>
+      <ul className="mt-2.5 space-y-1.5">
+        {items.map(({ sub }) => (
+          <li key={sub.id} className="flex items-center gap-2 text-[12px]">
+            <AppLogo providerId={sub.providerId} category={sub.category} color={sub.color} size={20} />
+            <span className="font-medium">{sub.name}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -676,7 +623,7 @@ function Option({ title, subtitle, ready, missing, children }: { title: string; 
 
 function Button({ children, onClick, busy, primary }: { children: React.ReactNode; onClick: () => void; busy?: boolean; primary?: boolean }) {
   return (
-    <button onClick={onClick} disabled={busy} className={`rounded-xl px-3 py-2 text-[13px] font-medium transition-opacity disabled:opacity-50 ${primary ? 'bg-accent font-semibold text-canvas hover:opacity-90' : 'border border-white/10 hover:bg-white/[0.07]'}`}>
+    <button onClick={onClick} disabled={busy} className={`rounded-xl px-3 py-2 text-[13px] font-medium transition-opacity disabled:opacity-50 ${primary ? 'bg-accent font-semibold text-white hover:opacity-90' : 'border border-white/10 hover:bg-white/[0.07]'}`}>
       {busy ? 'Working' : children}
     </button>
   );
