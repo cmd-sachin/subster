@@ -38,7 +38,7 @@ object Sync {
 
     /** Keeps usage fresh in the background, a few times a day, only when online. */
     fun schedule(context: Context) {
-        val request = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork("subster-usage-sync", ExistingPeriodicWorkPolicy.KEEP, request)

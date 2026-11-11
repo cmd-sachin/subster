@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Activity, Banknote, Bot, Check, Copy, Download, ExternalLink, FlaskConical, Globe, KeyRound, Landmark, RefreshCw, Settings2, Smartphone, Tags, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
+import { ConnectionBadge, since } from '@/components/connection';
 import { useApp, type MutateResult } from '@/components/app-state';
 import { CATEGORY_LABEL, providerById, webDomains } from '@/domain/catalog';
 import { diffDays, money, today } from '@/domain/dates';
@@ -363,9 +364,41 @@ function Connections() {
           )}
         </section>
 
+        <section className="panel" aria-label="Live connections">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3">
+            <div>
+              <h3 className="text-[14px] font-semibold">Live connections</h3>
+              <p className="text-[12px] text-faint">
+                Worked out automatically for every subscription. {state.monitor.extensionSeenAt ? `Browser extension last called in ${since(state.monitor.extensionSeenAt)}.` : 'The browser extension has not called in yet.'}{' '}
+                {state.monitor.checkedAt ? `PayPal and linked accounts verified ${since(state.monitor.checkedAt)}.` : ''}
+              </p>
+            </div>
+            <Button busy={busy === 'verify'} onClick={() => act('verify', () => mutate('/api/presence', undefined, 'PUT'), (data) => ((data as { changes?: string[] }).changes?.length ? (data as { changes: string[] }).changes.join(' ') : 'Everything verified. Nothing changed.'))}>
+              <RefreshCw size={14} className="mr-1.5 inline" aria-hidden="true" />
+              Verify now
+            </Button>
+          </div>
+          {subs.length === 0 ? (
+            <p className="px-5 py-5 text-[13px] text-muted">Track a subscription and it shows up here, connecting by itself as your browser and phone report.</p>
+          ) : (
+            <ul className="grid gap-x-6 px-5 py-2 sm:grid-cols-2 xl:grid-cols-3">
+              {subs.map((s) => {
+                const connection = state.connections[s.id];
+                return (
+                  <li key={s.id} className="flex items-center gap-2.5 border-b border-white/[0.04] py-2 text-[13px]">
+                    <AppLogo providerId={s.providerId} category={s.category} color={s.color} size={24} />
+                    <span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>
+                    {connection && <ConnectionBadge connection={connection} />}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
         <div className="grid gap-4 lg:grid-cols-2">
           <Card id="browser" icon={Globe} title="Browser extension" badge={web.days > 0 ? `Last report ${ago(web.last)}` : 'Not reporting'} live={web.days > 0}>
-            <p className="text-[13px] leading-relaxed text-muted">Measures time on the sites of your subscriptions in Chrome, including music playing in a background tab. It sends daily totals only: no page addresses, titles or content.</p>
+            <p className="text-[13px] leading-relaxed text-muted">Reports live when one of your subscription sites is open, measures time on it (including music in a background tab), and checks whether you are signed in there. It sends totals and yes or no answers only: no page addresses, titles, content or cookie values.</p>
             {web.days > 0 ? (
               <dl className="mt-3 grid grid-cols-3 gap-x-6 text-[13px]">
                 <Fact label="Subscriptions reported" value={String(web.subs)} />
@@ -373,7 +406,7 @@ function Connections() {
                 <Fact label="Sites it can measure" value={String(webSites.length)} />
               </dl>
             ) : (
-              <Steps items={['Open chrome://extensions and turn on Developer mode.', 'Choose "Load unpacked" and pick the extension folder of this project.', `Open its popup and press "Sync now". It reports to ${origin || 'this server'}.`]} />
+              <Steps items={['Open chrome://extensions and turn on Developer mode.', 'Choose "Load unpacked" and pick the extension folder of this project.', `Open its popup and press "Sync now". It reports to ${origin || 'this server'}.`, 'Press "Monitor sign-in" in the popup to let it tell signed in from signed out on those sites.']} />
             )}
             <SiteList label="It measures" empty="None of your subscriptions has a site of its own to measure." items={webSites.map((s) => ({ sub: s, text: sitesOf(s).join(', ') }))} />
           </Card>
@@ -401,7 +434,7 @@ function Connections() {
                 const app = providerById(a.providerId);
                 return (
                   <li key={a.providerId} className="flex flex-wrap items-center gap-3 py-2.5 text-[13px]">
-                    <AppLogo providerId={a.providerId} category={app?.category ?? 'Other'} color={app?.color ?? '#1558c9'} size={28} />
+                    <AppLogo providerId={a.providerId} category={app?.category ?? 'Other'} color={app?.color ?? '#0473fd'} size={28} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{app?.name ?? a.providerId}</span>
                       <span className="block text-[12px] text-muted">
@@ -449,6 +482,26 @@ function Connections() {
               ? 'The agent reads your subscriptions through tools and can only propose: every change waits for you. Live prices are read from each provider\'s official site with Google Search grounding.'
               : 'No Gemini key is set, so recommendations come from the built-in rules and prices from the built-in catalog. Add GEMINI_API_KEY to .env.local for the agent and live prices.'}
           </p>
+          {state.integrations.agent === 'gemini' && (
+            <div className="mt-3">
+              <div className="flex items-baseline justify-between text-[12px] text-muted">
+                <span>
+                  Free AI allowance today, across {state.integrations.ai.keys} key{state.integrations.ai.keys === 1 ? '' : 's'}
+                </span>
+                <span className="num">
+                  {state.integrations.ai.sentToday} of about {state.integrations.ai.dailyAllowance} requests used
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.08]" role="img" aria-label={`${state.integrations.ai.sentToday} of about ${state.integrations.ai.dailyAllowance} requests used`}>
+                <div className={`h-full rounded-full ${state.integrations.ai.availableAgainAt ? 'bg-bad' : 'bg-accent'}`} style={{ width: `${state.integrations.ai.availableAgainAt ? 100 : Math.min(100, (state.integrations.ai.sentToday / Math.max(1, state.integrations.ai.dailyAllowance)) * 100)}%` }} />
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-faint">
+                {state.integrations.ai.availableAgainAt
+                  ? `Used up on every key. Available again around ${new Date(state.integrations.ai.availableAgainAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Until then recommendations come from the built-in rules.`
+                  : `Counted since the server started. An audit uses a handful of requests, a fit check two or three. Add more keys as GEMINI_API_KEYS in .env.local, separated by commas.`}
+              </p>
+            </div>
+          )}
           {liveChecks.find((l) => l.error) && <p className="mt-2 text-[12px] leading-relaxed text-warn">Latest price check problem: {liveChecks.find((l) => l.error)!.error}</p>}
         </Card>
       </Group>

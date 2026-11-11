@@ -19,8 +19,10 @@ import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as ApiDemoRouteImport } from './routes/api/demo'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
+import { Route as ApiFitRouteImport } from './routes/api/fit'
 import { Route as ApiImportRouteImport } from './routes/api/import'
 import { Route as ApiLogsRouteImport } from './routes/api/logs'
+import { Route as ApiPresenceRouteImport } from './routes/api/presence'
 import { Route as ApiResetRouteImport } from './routes/api/reset'
 import { Route as ApiServicePlansRouteImport } from './routes/api/service-plans'
 import { Route as ApiServicesRouteImport } from './routes/api/services'
@@ -97,6 +99,11 @@ const ApiEventsRoute = ApiEventsRouteImport.update({
   path: '/api/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFitRoute = ApiFitRouteImport.update({
+  id: '/api/fit',
+  path: '/api/fit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiImportRoute = ApiImportRouteImport.update({
   id: '/api/import',
   path: '/api/import',
@@ -105,6 +112,11 @@ const ApiImportRoute = ApiImportRouteImport.update({
 const ApiLogsRoute = ApiLogsRouteImport.update({
   id: '/api/logs',
   path: '/api/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPresenceRoute = ApiPresenceRouteImport.update({
+  id: '/api/presence',
+  path: '/api/presence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiResetRoute = ApiResetRouteImport.update({
@@ -246,8 +258,10 @@ export interface FileRoutesByFullPath {
   '/api/agent': typeof ApiAgentRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
+  '/api/fit': typeof ApiFitRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
+  '/api/presence': typeof ApiPresenceRoute
   '/api/reset': typeof ApiResetRoute
   '/api/service-plans': typeof ApiServicePlansRoute
   '/api/services': typeof ApiServicesRoute
@@ -285,8 +299,10 @@ export interface FileRoutesByTo {
   '/api/agent': typeof ApiAgentRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
+  '/api/fit': typeof ApiFitRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
+  '/api/presence': typeof ApiPresenceRoute
   '/api/reset': typeof ApiResetRoute
   '/api/service-plans': typeof ApiServicePlansRoute
   '/api/services': typeof ApiServicesRoute
@@ -325,8 +341,10 @@ export interface FileRoutesById {
   '/api/agent': typeof ApiAgentRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
+  '/api/fit': typeof ApiFitRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
+  '/api/presence': typeof ApiPresenceRoute
   '/api/reset': typeof ApiResetRoute
   '/api/service-plans': typeof ApiServicePlansRoute
   '/api/services': typeof ApiServicesRoute
@@ -366,8 +384,10 @@ export interface FileRouteTypes {
     | '/api/agent'
     | '/api/demo'
     | '/api/events'
+    | '/api/fit'
     | '/api/import'
     | '/api/logs'
+    | '/api/presence'
     | '/api/reset'
     | '/api/service-plans'
     | '/api/services'
@@ -405,8 +425,10 @@ export interface FileRouteTypes {
     | '/api/agent'
     | '/api/demo'
     | '/api/events'
+    | '/api/fit'
     | '/api/import'
     | '/api/logs'
+    | '/api/presence'
     | '/api/reset'
     | '/api/service-plans'
     | '/api/services'
@@ -444,8 +466,10 @@ export interface FileRouteTypes {
     | '/api/agent'
     | '/api/demo'
     | '/api/events'
+    | '/api/fit'
     | '/api/import'
     | '/api/logs'
+    | '/api/presence'
     | '/api/reset'
     | '/api/service-plans'
     | '/api/services'
@@ -484,8 +508,10 @@ export interface RootRouteChildren {
   ApiAgentRoute: typeof ApiAgentRoute
   ApiDemoRoute: typeof ApiDemoRoute
   ApiEventsRoute: typeof ApiEventsRoute
+  ApiFitRoute: typeof ApiFitRoute
   ApiImportRoute: typeof ApiImportRoute
   ApiLogsRoute: typeof ApiLogsRoute
+  ApiPresenceRoute: typeof ApiPresenceRoute
   ApiResetRoute: typeof ApiResetRoute
   ApiServicePlansRoute: typeof ApiServicePlansRoute
   ApiServicesRoute: typeof ApiServicesRoute
@@ -585,6 +611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/fit': {
+      id: '/api/fit'
+      path: '/api/fit'
+      fullPath: '/api/fit'
+      preLoaderRoute: typeof ApiFitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/import': {
       id: '/api/import'
       path: '/api/import'
@@ -597,6 +630,13 @@ declare module '@tanstack/react-router' {
       path: '/api/logs'
       fullPath: '/api/logs'
       preLoaderRoute: typeof ApiLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/presence': {
+      id: '/api/presence'
+      path: '/api/presence'
+      fullPath: '/api/presence'
+      preLoaderRoute: typeof ApiPresenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/reset': {
@@ -788,8 +828,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRoute: ApiAgentRoute,
   ApiDemoRoute: ApiDemoRoute,
   ApiEventsRoute: ApiEventsRoute,
+  ApiFitRoute: ApiFitRoute,
   ApiImportRoute: ApiImportRoute,
   ApiLogsRoute: ApiLogsRoute,
+  ApiPresenceRoute: ApiPresenceRoute,
   ApiResetRoute: ApiResetRoute,
   ApiServicePlansRoute: ApiServicePlansRoute,
   ApiServicesRoute: ApiServicesRoute,

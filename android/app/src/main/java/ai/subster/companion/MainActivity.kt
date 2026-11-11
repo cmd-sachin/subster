@@ -54,12 +54,12 @@ import java.text.DateFormat
 import java.util.Date
 
 // Same palette as the web app (src/app/globals.css).
-private val Canvas = Color(0xFF030407)
+private val Canvas = Color(0xFF02030C)
 private val Ink = Color(0xFFEEF1F7)
 private val Muted = Color(0xFF9AA4B8)
 private val Faint = Color(0xFF677188)
-private val Accent = Color(0xFFD4FF24)
-private val Good = Color(0xFFD4FF24)
+private val Accent = Color(0xFFFED106)
+private val Good = Color(0xFF34D399)
 private val Warn = Color(0xFFF0B560)
 private val Bad = Color(0xFFF08585)
 private val Glass = Color(0x0FFFFFFF)
@@ -114,7 +114,7 @@ private fun CompanionScreen() {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B2A63), Canvas, Canvas)))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0035C5), Canvas, Canvas)))
             .systemBarsPadding(),
     ) {
         Column(

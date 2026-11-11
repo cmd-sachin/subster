@@ -97,6 +97,27 @@ async function freshSpotifyToken(connection: AccountConnection) {
 }
 
 /**
+ * Checks that the Spotify link still works, refreshing its token if needed, and records the
+ * result on the link. Returns a description when the link changed state, otherwise nothing.
+ */
+export async function verifySpotifyLink(): Promise<string | undefined> {
+  const connection = db().accounts.find((a) => a.providerId === 'spotify' && a.method === 'oauth');
+  if (!connection || !spotifyConfigured()) return undefined;
+  const was = connection.needsReauth === true;
+  try {
+    const me = await spotifyGet<{ product?: string }>(await freshSpotifyToken(connection), '/v1/me');
+    connection.product = me.product;
+    connection.needsReauth = false;
+  } catch (error) {
+    connection.needsReauth = true;
+    log.warn('accounts', 'Spotify link no longer works', { error: error instanceof Error ? error.message : String(error) });
+  }
+  connection.checkedAt = new Date().toISOString();
+  if (was === connection.needsReauth) return undefined;
+  return connection.needsReauth ? 'Spotify: the account link stopped working' : 'Spotify: the account link works again';
+}
+
+/**
  * Reads the account's recently played tracks and records listening minutes per day against the
  * Spotify subscription. Spotify returns at most the last 50 plays, so this adds to what the
  * Android companion reports rather than replacing it: for each day the larger figure is kept.

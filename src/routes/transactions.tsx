@@ -186,7 +186,7 @@ function Attention({ sub, tone, title, detail, cta, onOpen }: { sub?: Subscripti
   return (
     <li className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] px-4 py-3 last:border-b-0">
       <AlertTriangle size={16} className={tone === 'bad' ? 'text-bad' : 'text-warn'} aria-hidden="true" />
-      <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#1558c9'} size={28} />
+      <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#0473fd'} size={28} />
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium">
           {sub?.name}: {title}
@@ -263,7 +263,7 @@ function PaymentsTable({ charges, total, subs, refundOf, onOpen }: { charges: Ch
                 <td className="num whitespace-nowrap px-4 py-2.5 text-muted">{shortDate(c.date)}</td>
                 <td className="px-2 py-2.5">
                   <span className="flex items-center gap-2.5">
-                    <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#1558c9'} size={28} />
+                    <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#0473fd'} size={28} />
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{sub?.name ?? 'Removed subscription'}</span>
                       <span className="block truncate text-[12px] text-faint">{sub?.plan}</span>
@@ -315,7 +315,7 @@ function Upcoming({ state, subs, mutate }: { state: AppState; subs: Map<string, 
           const days = diffDays(u.date, today());
           return (
             <li key={`${u.subId}-${u.date}`} className="flex flex-wrap items-center gap-3 border-b border-white/[0.05] px-4 py-3 last:border-b-0">
-              <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#1558c9'} size={32} />
+              <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#0473fd'} size={32} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-medium">{u.name}</span>
                 <span className="num block text-[12px] text-muted">
@@ -437,9 +437,9 @@ function Help({ charge, sub, refund, state, onClose }: { charge: Charge; sub?: S
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <aside role="dialog" aria-modal="true" aria-label="Payment help" onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[480px] flex-col overflow-y-auto border-l border-white/10 bg-[#07090d]">
+      <aside role="dialog" aria-modal="true" aria-label="Payment help" onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[480px] flex-col overflow-y-auto border-l border-white/10 bg-[#060916]">
         <header className="flex items-start gap-3.5 border-b border-white/[0.06] p-5">
-          <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#1558c9'} size={48} />
+          <AppLogo providerId={sub?.providerId} category={sub?.category ?? 'Other'} color={sub?.color ?? '#0473fd'} size={48} />
           <div className="min-w-0 flex-1">
             <h2 className="text-[18px] font-semibold tracking-tight">{sub?.name ?? 'Payment'}</h2>
             <p className="num text-[13px] text-muted">
@@ -708,7 +708,7 @@ function Record({ subs, currency, onClose }: { subs: Subscription[]; currency: s
           if (res.ok) onClose();
           else setError(res.error ?? 'Something went wrong');
         }}
-        className="rise w-full max-w-[400px] space-y-4 rounded-2xl border border-white/10 bg-[#07090d] p-5"
+        className="rise w-full max-w-[400px] space-y-4 rounded-2xl border border-white/10 bg-[#060916] p-5"
       >
         <h2 className="text-[16px] font-semibold">Record a payment</h2>
         <p className="text-[13px] leading-relaxed text-muted">For a charge your bank or PayPal did not report. It joins the history like any other payment.</p>

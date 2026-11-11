@@ -66,6 +66,97 @@ export interface UsageDay {
   source: 'android' | 'web' | 'account' | 'manual';
 }
 
+/** Whether the user is signed in to a provider, and how we know. */
+export type AuthStatus = 'signed_in' | 'likely' | 'signed_out' | 'unknown';
+
+/** What the browser extension last saw for one subscription's site. */
+export interface WebPresence {
+  lastSeenAt?: string;
+  /** The site counts as in use until this moment; each heartbeat pushes it forward. */
+  activeUntil?: string;
+  auth?: AuthStatus;
+  authCheckedAt?: string;
+  /** When the browser's session for the site runs out, if its cookie says. */
+  sessionExpiresAt?: string;
+}
+
+/** The last time a PayPal agreement was read back from PayPal. */
+export interface BillingCheck {
+  status: string;
+  ok: boolean;
+  checkedAt: string;
+  error?: string;
+}
+
+export interface ConnectionSignal {
+  kind: 'browser' | 'phone' | 'account' | 'billing';
+  ok: boolean;
+  label: string;
+  at?: string;
+}
+
+/** Everything known, without the user doing anything, about how one subscription is connected. */
+export interface ServiceConnection {
+  subId: string;
+  /** live: in use right now. connected: a source reports for it. attention: something needs the user. waiting: nothing reports yet. */
+  state: 'live' | 'connected' | 'attention' | 'waiting';
+  headline: string;
+  activeUntil?: string;
+  auth: { status: AuthStatus; via: 'browser' | 'oauth' | 'none'; checkedAt?: string; expiresAt?: string };
+  signals: ConnectionSignal[];
+}
+
+/** One question the fit check asks before judging a subscription. */
+export interface FitQuestion {
+  id: string;
+  label: string;
+  /** titles: a list of films or series. choice: pick one. multi: pick any. text / number: free entry. */
+  kind: 'titles' | 'choice' | 'multi' | 'text' | 'number';
+  options?: string[];
+  hint?: string;
+}
+
+export interface FitTitle {
+  title: string;
+  /** Whether a page for the title could be read. When false, nothing is known about it. */
+  found: boolean;
+  onService: boolean;
+  url?: string;
+  offers: { provider: string; kind: 'stream' | 'rent' | 'buy'; price?: number; currency?: string; quality?: string }[];
+}
+
+export interface FitAlternative {
+  name: string;
+  providerId?: string;
+  plan?: string;
+  price?: number;
+  currency?: string;
+  cycle?: string;
+  why: string;
+  /** live: the price was read from the official page in this check. catalog: built-in list price. model: the model's own claim, not checked. */
+  basis: 'live' | 'catalog' | 'model';
+}
+
+/** The answer to "is this subscription right for me?", from the user's answers, their usage and what could be read live. */
+export interface FitCheck {
+  subId: string;
+  createdAt: string;
+  engine: 'gemini' | 'rules';
+  answers: Record<string, string>;
+  verdict: 'worth_it' | 'partly' | 'not_worth_it' | 'unclear';
+  headline: string;
+  reasoning: string;
+  recommendation: { action: 'keep' | 'downgrade' | 'switch' | 'rent_instead' | 'cancel'; text: string; monthlySaving?: number };
+  titles: FitTitle[];
+  /** For a streaming service: what renting every wanted title that it lacks would cost once. */
+  rentTotal?: number;
+  alternatives: FitAlternative[];
+  sources: { label: string; url: string }[];
+  /** What the judgement rests on, including what could not be checked. */
+  basis: string[];
+  steps: RunStep[];
+}
+
 export type RefundReason = 'charged_after_cancel' | 'unused_renewal' | 'trial_converted' | 'duplicate_charge' | 'price_changed' | 'other';
 
 /**
@@ -172,6 +263,16 @@ export interface Db {
   runs: AgentRun[];
   /** Refund requests. Optional so documents written before it existed still load. */
   refunds?: RefundRequest[];
+  /** Live lookups kept for a day, so repeating a check does not spend the model's small daily allowance. */
+  liveCache?: Record<string, { at: string; value: unknown }>;
+  /** The latest fit check per subscription. */
+  fitChecks?: Record<string, FitCheck>;
+  /** Live signals from the browser extension, by subscription id. */
+  presence?: Record<string, WebPresence>;
+  /** PayPal agreement read-backs, by subscription id. */
+  billingChecks?: Record<string, BillingCheck>;
+  /** When the browser extension last called in. */
+  extensionSeenAt?: string;
   webhookLog: { at: string; source: 'paypal' | 'bank'; type: string; resource: string; handled: string }[];
   bank: BankLink | null;
   bankTransactions: BankTransaction[];
@@ -259,6 +360,11 @@ export interface AppState {
   notes: TimelineNote[];
   charges: Charge[];
   refunds: RefundRequest[];
+  fitChecks: Record<string, FitCheck>;
+  /** How each subscription is connected right now, by subscription id. */
+  connections: Record<string, ServiceConnection>;
+  /** When the browser extension last called in, and when connections were last verified. */
+  monitor: { extensionSeenAt?: string; checkedAt?: string };
   /** Imported bank payments, newest first (the latest 500). */
   bankTransactions: BankTransaction[];
   usage: UsageDay[];
@@ -266,6 +372,8 @@ export interface AppState {
     paypal: 'sandbox' | 'live' | 'off';
     /** AG Studio licence keys are meant for the browser; without one Studio runs as a trial. */
     agStudioLicense?: string;
+    /** Model requests sent today across all keys, and what the free tier leaves. */
+    ai: { keys: number; models: number; sentToday: number; dailyAllowance: number; exhausted: number; slots: number; availableAgainAt?: string };
     /** Whether live plan checks against official sites can run (needs a Gemini API key). */
     planMonitor: boolean;
     /** Whether Spotify OAuth credentials are configured. */
@@ -361,6 +469,9 @@ export interface AccountConnection {
   product?: string;
   connectedAt: string;
   lastSyncAt?: string;
+  /** When the link was last verified with the provider, and whether it has stopped working. */
+  checkedAt?: string;
+  needsReauth?: boolean;
   /** OAuth tokens. Never sent to the browser. */
   tokens?: { accessToken: string; refreshToken?: string; expiresAt: number };
 }

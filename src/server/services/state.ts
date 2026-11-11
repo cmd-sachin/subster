@@ -4,14 +4,17 @@ import type { AppState } from '@/domain/types';
 import { agentEngine } from '@/server/agent/run';
 import { availableBanks, plaidIsSandbox } from '@/server/integrations/bank';
 import { paypalMode } from '@/server/integrations/paypal';
+import { llmUsage } from '@/server/llm';
 import { db } from '@/server/store';
 import { spotifyConfigured } from './accounts';
+import { buildConnections, connectionsCheckedAt, startConnectionMonitor } from './connections';
 import { livePlansForRegion, planMonitorAvailable, startPlanMonitor } from './plans';
 
 /** Everything the UI needs in one payload. Credentials, tokens and cursors never leave the server. */
 export function buildState(): AppState {
   const data = db();
   startPlanMonitor();
+  startConnectionMonitor();
   // Amounts in generated text (issues, recommendations) are formatted in the user's currency.
   setCurrency(data.settings.currency);
 
@@ -24,19 +27,23 @@ export function buildState(): AppState {
     demo: data.demo === true,
     portfolio: analyze(data),
     settings: data.settings,
-    accounts: data.accounts.map(({ providerId, method, displayName, product, connectedAt, lastSyncAt }) => ({ providerId, method, displayName, product, connectedAt, lastSyncAt })),
+    accounts: data.accounts.map(({ providerId, method, displayName, product, connectedAt, lastSyncAt, checkedAt, needsReauth }) => ({ providerId, method, displayName, product, connectedAt, lastSyncAt, checkedAt, needsReauth })),
     livePlans: livePlansForRegion(),
     actions: data.actions,
     runs: data.runs,
     notes: data.notes,
     charges: data.charges,
     refunds: data.refunds ?? [],
+    fitChecks: data.fitChecks ?? {},
+    connections: buildConnections(data),
+    monitor: { extensionSeenAt: data.extensionSeenAt, checkedAt: connectionsCheckedAt() },
     bankTransactions: [...data.bankTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 500),
     usage: data.usage,
     integrations: {
       paypal: paypalMode(),
       agent: agentEngine(),
       agStudioLicense: process.env.AG_STUDIO_LICENSE || undefined,
+      ai: llmUsage(),
       planMonitor: planMonitorAvailable(),
       spotify: spotifyConfigured(),
       webhookLog: data.webhookLog.slice(0, 20),

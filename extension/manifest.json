@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Subster usage",
-  "version": "0.1.0",
-  "description": "Reports how long you spend on the sites of subscriptions you track in Subster. Daily totals only.",
+  "version": "0.2.0",
+  "description": "Tells Subster, live, which of your subscription sites you are using and whether you are signed in. Daily totals and yes/no answers only.",
   "minimum_chrome_version": "120",
-  "permissions": ["tabs", "idle", "alarms", "storage"],
+  "permissions": ["tabs", "idle", "alarms", "storage", "cookies"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
   "optional_host_permissions": ["https://*/*"],
   "background": { "service_worker": "background.js", "type": "module" },
-  "action": { "default_title": "Subster usage", "default_popup": "popup.html" }
+  "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" },
+  "action": { "default_title": "Subster usage", "default_popup": "popup.html", "default_icon": { "16": "icon-16.png", "48": "icon-48.png" } }
 }

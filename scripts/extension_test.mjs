@@ -1,5 +1,5 @@
 // Checks the browser extension's matching rules. Run with: npm run test:extension
-import { localDate, matchSite, pickSite } from '../extension/logic.js';
+import { authFromCookies, localDate, matchSite, originsFor, pickSite } from '../extension/logic.js';
 
 let passed = 0;
 let failed = 0;
@@ -36,6 +36,18 @@ check('music playing behind other work', id(pickSite([tab('https://docs.example.
 check('silent background tab is not use', id(pickSite([tab('https://docs.example.com/', { focused: true }), tab('https://music.apple.com/')], sites, true)), null);
 check('focused tracked tab beats a playing one', id(pickSite([tab('https://www.youtube.com/', { focused: true }), tab('https://music.apple.com/', { audible: true })], sites, true)), 'yt');
 check('untracked sound is not use', id(pickSite([tab('https://radio.example.com/', { focused: true, audible: true })], sites, true)), null);
+
+const NOW = 1_800_000_000;
+const cookie = (name, extra = {}) => ({ name, httpOnly: true, secure: true, expirationDate: NOW + 86_400, ...extra });
+check('known cookie present: signed in with expiry', authFromCookies([cookie('NetflixId'), cookie('nfvdid')], ['NetflixId'], NOW), { auth: 'signed_in', sessionExpiresAt: new Date((NOW + 86_400) * 1000).toISOString() });
+check('known cookie missing: signed out', authFromCookies([cookie('nfvdid')], ['NetflixId'], NOW).auth, 'signed_out');
+check('known cookie expired: signed out', authFromCookies([cookie('NetflixId', { expirationDate: NOW - 1 })], ['NetflixId'], NOW).auth, 'signed_out');
+check('chunked session cookie counts', authFromCookies([cookie('__Secure-next-auth.session-token.0')], ['__Secure-next-auth.session-token'], NOW).auth, 'signed_in');
+check('browser-session cookie has no expiry', authFromCookies([cookie('sessionKey', { expirationDate: undefined })], ['sessionKey'], NOW), { auth: 'signed_in' });
+check('unknown site with a session cookie: likely', authFromCookies([cookie('user_session')], [], NOW).auth, 'likely');
+check('unknown site with only tracking cookies: unknown', authFromCookies([cookie('_ga', { httpOnly: false })], [], NOW).auth, 'unknown');
+check('unknown site with no cookies: signed out', authFromCookies([], [], NOW).auth, 'signed_out');
+check('origins cover a domain and its subdomains', originsFor([sites[3]]), ['https://hotstar.com/*', 'https://*.hotstar.com/*', 'https://jiohotstar.com/*', 'https://*.jiohotstar.com/*']);
 
 check('local date', localDate(new Date(2026, 10, 11, 23, 59)), '2026-11-11');
 

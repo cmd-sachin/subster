@@ -2,6 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ExternalLink, KeyRound, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
+import { ConnectionBadge, ConnectionPanel, since } from '@/components/connection';
+import { FitCheck } from '@/components/fit-check';
 import { useApp } from '@/components/app-state';
 import { CATEGORY_ICON } from '@/components/category-icon';
 import { CATALOG, catalogPlans, webDomains, CATEGORIES, CATEGORY_LABEL, type Provider } from '@/domain/catalog';
@@ -23,12 +25,19 @@ export const Route = createFileRoute('/services')({ component: Services });
 const VERDICT_LABEL = { great: 'Good value', fair: 'Fair value', poor: 'Low value', unused: 'Unused', unmeasured: 'Usage not measured', essential: 'Essential' } as const;
 
 function Services() {
-  const { state } = useApp();
+  const { state, refresh } = useApp();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category | 'all' | 'mine'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
 
   const mine = useMemo(() => new Map((state?.portfolio.insights ?? []).filter((i) => i.sub.providerId && i.sub.status !== 'cancelled').map((i) => [i.sub.providerId!, i])), [state]);
+  // "In use now" lapses on its own when the browser goes quiet, so re-read while anything is live.
+  const anyLive = Object.values(state?.connections ?? {}).some((c) => c.state === 'live');
+  useEffect(() => {
+    if (!anyLive) return;
+    const timer = setInterval(() => void refresh(), 30_000);
+    return () => clearInterval(timer);
+  }, [anyLive, refresh]);
   if (!state) return <p className="p-8 text-muted">Loading services</p>;
 
   const needle = query.trim().toLowerCase();
@@ -82,7 +91,7 @@ function Services() {
             <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {group.apps.map((app) => {
                 const insight = mine.get(app.id);
-                const linked = state.accounts.some((a) => a.providerId === app.id);
+                const connection = insight ? state.connections[insight.sub.id] : undefined;
                 const live = state.livePlans[app.id];
                 const official = live?.status === 'ok' && live.plans.length > 0;
                 const cheapest = [...(official ? live.plans : catalogPlans(app, state.settings.currency))].sort((a, b) => a.price - b.price)[0];
@@ -98,11 +107,7 @@ function Services() {
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         {insight && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">Subscribed</span>}
-                        {linked && (
-                          <span className="flex items-center gap-1 text-[11px] text-good">
-                            <KeyRound size={11} aria-hidden="true" /> Signed in
-                          </span>
-                        )}
+                        {connection && <ConnectionBadge connection={connection} />}
                       </span>
                     </button>
                   </li>
@@ -131,6 +136,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Insight; state: AppState; onClose: () => void }) {
   const { mutate } = useApp();
   const account = state.accounts.find((a) => a.providerId === app.id);
+  const connection = insight ? state.connections[insight.sub.id] : undefined;
   const pendingSubscribe = state.actions.find((a) => a.providerId === app.id && a.type === 'subscribe' && (a.status === 'pending' || a.status === 'guided'));
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -164,7 +170,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <aside role="dialog" aria-modal="true" aria-label={app.name} onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[460px] flex-col overflow-y-auto border-l border-white/10 bg-[#07090d]">
+      <aside role="dialog" aria-modal="true" aria-label={app.name} onClick={(e) => e.stopPropagation()} className="rise flex h-full w-full max-w-[500px] flex-col overflow-y-auto border-l border-white/10 bg-[#060916]">
         <header className="flex items-start gap-3.5 border-b border-white/[0.06] p-5">
           <AppIcon app={app} size={52} />
           <div className="min-w-0 flex-1">
@@ -207,6 +213,12 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
               <p className="text-[13px] leading-relaxed text-muted">You are not tracking {app.name}. Add it below, or link your bank and it is picked up automatically.</p>
             )}
           </Section>
+
+          {insight && insight.sub.status !== 'cancelled' && (
+            <Section title="Is it right for you?" note="Fit check">
+              <FitCheck key={insight.sub.id} sub={insight.sub} check={state.fitChecks[insight.sub.id]} />
+            </Section>
+          )}
 
           <Section title="Plans" note={official ? `Official site, ${live.region}` : plans.length > 0 ? (regional ? 'Built-in catalog, not live' : 'US list prices, not live') : undefined}>
             {official ? (
@@ -345,6 +357,26 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
             </Section>
           )}
 
+          {connection && (
+            <Section title="Connection" note={state.monitor.checkedAt ? `Verified ${since(state.monitor.checkedAt)}` : 'Monitored automatically'}>
+              <ConnectionPanel connection={connection} />
+              {connection.state === 'waiting' && (
+                <p className="mt-2.5 text-[12px] leading-relaxed text-faint">
+                  Nothing reports for {app.name} yet.{' '}
+                  <Link to="/connect" className="text-accent underline-offset-2 hover:underline">
+                    Set up the browser extension or the Android companion
+                  </Link>{' '}
+                  and it connects by itself.
+                </p>
+              )}
+              {connection.auth.status === 'signed_out' && connection.auth.via === 'browser' && (
+                <a href={app.manageUrl} target="_blank" rel="noreferrer" className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90">
+                  Sign in at {app.name} <ExternalLink size={12} aria-hidden="true" />
+                </a>
+              )}
+            </Section>
+          )}
+
           <Section title={`Your ${app.name} account`}>
             {app.account.type === 'oauth' ? (
               account?.method === 'oauth' ? (
@@ -377,31 +409,14 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                   )}
                 </div>
               )
-            ) : account ? (
-              <div className="space-y-3">
-                <p className="text-[13px] leading-relaxed">You confirmed you are signed in on {app.name}'s site.</p>
-                <div className="flex gap-2">
-                  <a href={app.manageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[12px] font-medium hover:bg-white/[0.07]">
-                    Open account page <ExternalLink size={12} aria-hidden="true" />
-                  </a>
-                  <Small busy={busy === 'unlink'} onClick={() => run('unlink', '/api/accounts/link', { providerId: app.id, action: 'unlink' }, 'Removed.')}>
-                    Remove
-                  </Small>
-                </div>
-              </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-[13px] leading-relaxed text-muted">
-                  {app.name} has no public sign-in for other apps, so you sign in on its own site, where you can see and change your plan. Subster never asks for your {app.name} password.
+                  {app.name} has no sign-in for other apps, so there is nothing to link by hand. {insight ? 'The connection above is read from your own browser and phone.' : `Once you track it, Subster picks up your ${app.name} session from your browser by itself.`} Subster never asks for your {app.name} password.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <a href={app.manageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3 py-2 text-[13px] font-semibold text-canvas hover:opacity-90">
-                    Sign in at {app.name} <ExternalLink size={13} aria-hidden="true" />
-                  </a>
-                  <Small busy={busy === 'confirm'} onClick={() => run('confirm', '/api/accounts/link', { providerId: app.id, action: 'confirm' }, 'Noted.')}>
-                    I've signed in
-                  </Small>
-                </div>
+                <a href={app.manageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[12px] font-medium hover:bg-white/[0.07]">
+                  Open {app.name} account page <ExternalLink size={12} aria-hidden="true" />
+                </a>
               </div>
             )}
           </Section>

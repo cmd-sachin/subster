@@ -24,26 +24,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col border-b border-white/[0.06] bg-black/25 backdrop-blur-xl md:w-[232px] md:border-b-0 md:border-r">
-        <div className="flex items-center gap-3 px-5 pb-2 pt-6">
-          <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-            <defs>
-              <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#2f74e6" />
-                <stop offset="1" stopColor="#1558c9" />
-              </linearGradient>
-            </defs>
-            <rect width="30" height="30" rx="9" fill="url(#logo)" />
-            <path d="M8.5 18c1.7 2.4 3.9 3.6 6.5 3.6 3.2 0 5-1.6 5-3.7 0-4.7-9.6-2.2-9.6-6.7 0-1.9 1.7-3.3 4.5-3.3 2.1 0 3.9.9 5.3 2.6" fill="none" stroke="#d4ff24" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          <div>
-            <div className="text-[16px] font-semibold leading-tight tracking-tight">Subster</div>
-            <div className="text-[11px] leading-tight text-faint">Subscription agent</div>
-            {state?.demo && (
-              <Link to="/connect" className="mt-1.5 inline-block rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn" title="This is sample data, not your own. Close it on the Connections page.">
-                Demo data
-              </Link>
-            )}
-          </div>
+        <div className="px-5 pb-2 pt-6">
+          <Link to="/" aria-label="Subster, command center">
+            <img src="/logo.png" alt="Subster" width={148} height={44} className="h-auto w-[148px]" />
+          </Link>
+          <p className="mt-1.5 text-[11px] leading-tight text-faint">Your subscriptions, looked after</p>
+          {state?.demo && (
+            <Link to="/connect" className="mt-2 inline-block rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn" title="This is sample data, not your own. Close it on the Connections page.">
+              Demo data
+            </Link>
+          )}
         </div>
 
         <nav className="flex gap-1 overflow-x-auto px-3 py-4 md:flex-col md:overflow-visible" aria-label="Main">
@@ -55,7 +45,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 to={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? 'bg-white/[0.07] text-ink' : 'text-muted hover:bg-white/[0.04] hover:text-ink'}`}
+                className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? 'bg-info-soft text-ink' : 'text-muted hover:bg-white/[0.04] hover:text-ink'}`}
               >
                 <Icon size={18} strokeWidth={1.75} className={active ? 'text-accent' : ''} aria-hidden="true" />
                 <span className="min-w-0 flex-1">

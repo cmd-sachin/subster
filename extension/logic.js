@@ -46,3 +46,24 @@ export function pickSite(tabs, sites, userActive) {
   }
   return null;
 }
+
+const SESSION_LIKE = /(^|[_.-])(session|sess|sid|auth|token|login|logged[_-]?in)([_.-]|id$|$)/i;
+
+/**
+ * Whether a site's cookies show a signed-in session. Only names, flags and expiry are looked at;
+ * values are never read. `known` are the cookie names the site sets only while signed in: with
+ * them the answer is definite, without them a session-like cookie can only mean "likely".
+ * cookies: { name, expirationDate (seconds, absent for a browser-session cookie), httpOnly, secure }
+ */
+export function authFromCookies(cookies, known, nowSeconds) {
+  const current = cookies.filter((c) => c.expirationDate === undefined || c.expirationDate > nowSeconds);
+  const named = (cookie) => known.some((name) => cookie.name === name || cookie.name.startsWith(`${name}.`));
+  const matches = known.length > 0 ? current.filter(named) : current.filter((c) => SESSION_LIKE.test(c.name) && (c.httpOnly || c.secure));
+  if (matches.length === 0) return { auth: known.length > 0 || current.length === 0 ? 'signed_out' : 'unknown' };
+  // The session lasts as long as its longest-lived cookie; a browser-session cookie has no date.
+  const expiry = matches.every((c) => c.expirationDate !== undefined) ? Math.max(...matches.map((c) => c.expirationDate)) : undefined;
+  return { auth: known.length > 0 ? 'signed_in' : 'likely', ...(expiry !== undefined && { sessionExpiresAt: new Date(expiry * 1000).toISOString() }) };
+}
+
+/** The host permission patterns that cover a site's domains. */
+export const originsFor = (sites) => [...new Set(sites.flatMap((site) => site.domains.flatMap((domain) => [`https://${domain}/*`, `https://*.${domain}/*`])))];

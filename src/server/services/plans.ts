@@ -17,6 +17,7 @@ import type { BillingCycle, Currency, LivePlan, LivePlans } from '@/domain/types
 import { HttpError } from '@/server/http';
 import { describeLlmError, generate, llmAvailable, textOf } from '@/server/llm';
 import { log } from '@/server/logger';
+import { livePricing, PRICING_PAGES } from './live';
 import { db, save } from '@/server/store';
 
 const CURRENCIES: Currency[] = ['USD', 'INR', 'EUR', 'GBP'];
@@ -104,6 +105,27 @@ export async function refreshPlans(providerId: string): Promise<LivePlans> {
   const previous = data.livePlans[providerId]?.region === region ? data.livePlans[providerId] : undefined;
   const started = performance.now();
 
+  // Where the provider's price page is known, it is read directly: one request, no search quota.
+  if (PRICING_PAGES[providerId]) {
+    const [page] = await livePricing([providerId], currency).catch(() => []);
+    if (page) {
+      const changes = previous?.status === 'ok' ? diffPlans(previous.plans, page.plans) : [];
+      const result: LivePlans = {
+        providerId,
+        status: 'ok',
+        plans: page.plans.map(({ name, price, currency: planCurrency, cycle, features }) => ({ name, price, currency: planCurrency, cycle, ...(features && { note: features }) })),
+        region,
+        sourceUrls: [page.url],
+        checkedAt: new Date().toISOString(),
+        ...(changes.length > 0 ? { changes, changedAt: new Date().toISOString() } : previous?.changes && { changes: previous.changes, changedAt: previous.changedAt }),
+      };
+      data.livePlans[providerId] = result;
+      save('plans refreshed');
+      log.info('plans', `${provider.name}: ${result.plans.length} plans read from its price page`, { region, ms: Math.round(performance.now() - started) });
+      return result;
+    }
+  }
+
   const prompt = `Find the subscription plans that ${provider.name} currently sells to individual consumers in ${region}, using only its official website (${domain}). Search those sites and read the official pricing or plans page.
 
 Rules:
@@ -187,8 +209,11 @@ async function monitorOnce() {
   const data = db();
   const current = livePlansForRegion();
   const due = [...new Set(data.subscriptions.filter((s) => s.providerId && s.status !== 'cancelled').map((s) => s.providerId!))]
+    // Background checks only read known price pages. Searching for a price page needs Google Search
+    // quota the free tier does not have, and every refused attempt still spends a daily request.
+    .filter((id) => PRICING_PAGES[id])
     .filter((id) => Date.now() - Date.parse(current[id]?.lastAttemptAt ?? current[id]?.checkedAt ?? '1970-01-01') > STALE_AFTER_MS)
-    .slice(0, 8);
+    .slice(0, 3);
   if (due.length === 0) return;
   log.info('plans', `Monitor: checking ${due.length} subscribed service${due.length === 1 ? '' : 's'}`, { services: due });
   // One at a time: this is background work, and free-tier Gemini quotas are small.

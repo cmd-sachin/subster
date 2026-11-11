@@ -97,7 +97,7 @@ export function UsageTrend({ portfolio: p }: { portfolio: Portfolio }) {
         </div>
         <ul className="flex gap-4 text-[12px] text-muted">
           <li className="flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded bg-accent" aria-hidden="true" /> Earning their place
+            <span className="h-0.5 w-4 rounded bg-good" aria-hidden="true" /> Earning their place
           </li>
           <li className="flex items-center gap-1.5">
             <span className="h-0.5 w-4 rounded bg-[var(--info)]" aria-hidden="true" /> Low value
@@ -111,8 +111,8 @@ export function UsageTrend({ portfolio: p }: { portfolio: Portfolio }) {
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Weekly hours of use. This week: ${earning.at(-1)?.toFixed(1)} hours on subscriptions that earn their place, ${idle.at(-1)?.toFixed(1)} on low-value ones.`}>
             <defs>
               <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="var(--lime)" stopOpacity="0.22" />
-                <stop offset="1" stopColor="var(--lime)" stopOpacity="0" />
+                <stop offset="0" stopColor="var(--good)" stopOpacity="0.22" />
+                <stop offset="1" stopColor="var(--good)" stopOpacity="0" />
               </linearGradient>
             </defs>
             {ticks.map((t) => {
@@ -140,9 +140,9 @@ export function UsageTrend({ portfolio: p }: { portfolio: Portfolio }) {
                 <>
                   <path d={a.area} fill="url(#trend-fill)" />
                   <path d={b.d} fill="none" stroke="var(--info)" strokeWidth="1.75" pathLength={1} className="draw" />
-                  <path d={a.d} fill="none" stroke="var(--lime)" strokeWidth="2" pathLength={1} className="draw" />
+                  <path d={a.d} fill="none" stroke="var(--good)" strokeWidth="2" pathLength={1} className="draw" />
                   <circle cx={b.pts.at(-1)![0]} cy={b.pts.at(-1)![1]} r="3.5" fill="var(--canvas)" stroke="var(--info)" strokeWidth="1.75" />
-                  <circle cx={a.pts.at(-1)![0]} cy={a.pts.at(-1)![1]} r="3.5" fill="var(--canvas)" stroke="var(--lime)" strokeWidth="2" />
+                  <circle cx={a.pts.at(-1)![0]} cy={a.pts.at(-1)![1]} r="3.5" fill="var(--canvas)" stroke="var(--good)" strokeWidth="2" />
                 </>
               );
             })()}
@@ -195,7 +195,7 @@ export function Upcoming({ portfolio: p }: { portfolio: Portfolio }) {
 // ---- Categories ------------------------------------------------------------------------------
 
 // Steps from the palette's lime through its blue, so segments stay distinguishable without new hues.
-const SEGMENTS = ['#d4ff24', '#1558c9', '#7aa7f7', '#9fbf1c', '#0f3f94', '#c9d1dc', '#4d7fe0', '#6b8a12', '#5d6b82', '#2a3550'];
+const SEGMENTS = ['#fed106', '#0473fd', '#6aa8ff', '#fdb10e', '#0035c5', '#c9d1dc', '#4d7fe0', '#34d399', '#5d6b82', '#2a3550'];
 
 export function CategoryBar({ portfolio: p }: { portfolio: Portfolio }) {
   const totals = new Map<Category, { spend: number; count: number }>();

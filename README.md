@@ -26,6 +26,30 @@ npm run smoke               # end-to-end checks against the dev server. ERASES s
 **There is no simulated mode for integrations.** A fresh install is empty. A service without
 keys is shown as not connected, and the features that need it say so.
 
+**Connections are worked out, not entered.** For every subscription Subster shows whether it is
+in use right now, whether you are signed in, and where its payments are seen. The signals come
+from the browser extension (live presence and a sign-in check by session cookie name), the
+Android companion, OAuth-linked accounts, and the billing source. A monitor re-verifies PayPal
+agreements and OAuth links every 10 minutes and corrects a subscription's status when PayPal says
+it changed. Subster never signs in to a provider for you and never handles provider passwords;
+for providers with no API, "signed in" means your own browser holds a session there.
+
+**Fit check: is a subscription right for you?** On a subscribed service, the agent asks a few
+questions worded with your own plan, price and usage (which films and series you want; how much
+storage you use and on which devices; what you use an AI assistant for), then looks up what it
+can live and gives a verdict, a recommendation and alternatives. For video it checks each title
+you named against JustWatch for your country: whether your service has it, who else does, and what
+renting or buying costs, and compares renting once with a month of the subscription. For storage
+and AI it reads the official price pages of the alternatives. Each alternative's price is marked
+"read live", "catalog" or "not checked", and a title that could not be looked up is shown as
+unknown, never as unavailable. `src/server/agent/fit.ts`, `src/server/services/live.ts`
+
+Live reading uses Gemini's URL reader on pages named in the code, not Google Search. The model
+answers from memory when a page fails to load, so a fact is kept only when its page is reported
+as loaded. Two things to know: Gemini's free tier allows about 20 requests a day per model, and a
+check uses three to five, so real use needs billing enabled on the key; and JustWatch pages are a
+prototype source, a product would license that data.
+
 **Demo data is separate and labelled.** Connections has an "Open demo data" button that fills
 the app with 13 made-up subscriptions, a year of payments and 60 days of phone and browser
 usage, built to trigger each thing the product does (pause, downgrade, duplicate, unused, trial

@@ -1,4 +1,4 @@
-import { localDate } from './logic.js';
+import { localDate, originsFor } from './logic.js';
 
 const DEFAULT_SERVER = 'http://localhost:3000';
 const $ = (id) => document.getElementById(id);
@@ -16,7 +16,7 @@ function duration(ms) {
 }
 
 async function render() {
-  const { sites = [], totals = {}, current, lastSync, serverUrl = DEFAULT_SERVER } = await chrome.storage.local.get(['sites', 'totals', 'current', 'lastSync', 'serverUrl']);
+  const { sites = [], totals = {}, current, lastSync, auth = {}, serverUrl = DEFAULT_SERVER } = await chrome.storage.local.get(['sites', 'totals', 'current', 'lastSync', 'auth', 'serverUrl']);
   if (document.activeElement !== $('url')) $('url').value = serverUrl;
 
   const today = totals[localDate(new Date())] ?? {};
@@ -38,9 +38,26 @@ async function render() {
     const time = document.createElement('span');
     time.className = 'num';
     time.textContent = duration(today[site.id] ?? 0);
+    const state = auth[site.id]?.auth;
+    if (state) {
+      const badge = document.createElement('span');
+      badge.className = `auth ${state}`;
+      badge.textContent = { signed_in: 'signed in', likely: 'session found', signed_out: 'signed out', unknown: 'sign-in unknown' }[state];
+      name.append(badge);
+    }
     item.append(name, time);
     list.append(item);
   }
+
+  // Sign-in monitoring needs the user's permission for each site; ask only for what is missing.
+  const missing = [];
+  for (const site of sites) if (!(await chrome.permissions.contains({ origins: originsFor([site]) }))) missing.push(site);
+  $('signin').hidden = missing.length === 0;
+  $('signin').textContent = `Monitor sign-in on ${missing.length} site${missing.length === 1 ? '' : 's'}`;
+  $('signin').onclick = async () => {
+    if (await chrome.permissions.request({ origins: originsFor(missing) })) await sync();
+  };
+  $('signin-note').hidden = missing.length === 0;
 
   const status = $('status');
   status.className = lastSync && !lastSync.ok ? 'bad' : '';

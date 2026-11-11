@@ -423,6 +423,36 @@ export function webDomains(provider: Provider): string[] {
   return host === registrable || ACCOUNT_HOSTS.test(host) ? [] : [host];
 }
 
+/**
+ * The cookie a provider's site sets only while someone is signed in. The browser extension looks
+ * for it by name to tell signed in from signed out; it never reads or sends the value. These are
+ * observed, not documented, so a provider can change them: sites not listed here fall back to a
+ * generic check that can only say "likely".
+ */
+const GOOGLE_SESSION = ['SID', 'SAPISID', '__Secure-1PSID'];
+const SESSION_COOKIES: Record<string, string[]> = {
+  netflix: ['NetflixId', 'SecureNetflixId'],
+  spotify: ['sp_dc'],
+  'youtube-premium': GOOGLE_SESSION,
+  'youtube-music': GOOGLE_SESSION,
+  'youtube-tv': GOOGLE_SESSION,
+  'google-ai-gemini': GOOGLE_SESSION,
+  'google-one': GOOGLE_SESSION,
+  'chatgpt-plus': ['__Secure-next-auth.session-token'],
+  'perplexity-pro': ['__Secure-next-auth.session-token'],
+  claude: ['sessionKey'],
+  'apple-music': ['media-user-token'],
+  'kindle-unlimited': ['at-main', 'x-main'],
+  'amazon-music-unlimited': ['at-main', 'x-main'],
+  'linkedin-premium': ['li_at'],
+  'x-premium': ['auth_token'],
+  'reddit-premium': ['reddit_session'],
+  'twitch-turbo': ['auth-token'],
+  notion: ['token_v2'],
+  duolingo: ['jwt_token'],
+};
+export const sessionCookies = (provider: Provider) => SESSION_COOKIES[provider.id] ?? [];
+
 /** The country whose prices a currency stands for. Live plan checks are made for this region. */
 export const REGION: Record<Currency, string> = { INR: 'India', USD: 'the United States', EUR: 'Germany', GBP: 'the United Kingdom' };
 

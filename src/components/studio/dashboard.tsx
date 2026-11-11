@@ -140,14 +140,14 @@ export default function Dashboard() {
   );
 }
 
-// The first card is lime with dark text; the rest step through blues of the palette.
+// The first card is the logo's yellow with dark text; the rest step through its blues.
 const CARDS = [
-  { background: '#d4ff24', dark: true },
-  { background: 'linear-gradient(135deg,#1558c9,#0c3a8a)', dark: false },
-  { background: 'linear-gradient(135deg,#0f3f94,#081f4d)', dark: false },
-  { background: 'linear-gradient(135deg,#1a66e0,#1558c9)', dark: false },
-  { background: 'linear-gradient(135deg,#0c2f6e,#06142f)', dark: false },
-  { background: 'linear-gradient(135deg,#1558c9,#071a3d)', dark: false },
+  { background: '#fed106', dark: true },
+  { background: 'linear-gradient(135deg,#0473fd,#0035c5)', dark: false },
+  { background: 'linear-gradient(135deg,#0a4fd6,#06206e)', dark: false },
+  { background: 'linear-gradient(135deg,#2a86ff,#0473fd)', dark: false },
+  { background: 'linear-gradient(135deg,#0035c5,#060f3a)', dark: false },
+  { background: 'linear-gradient(135deg,#0473fd,#07154a)', dark: false },
 ];
 
 /** The headline numbers, as a shelf of cards you scroll sideways. */

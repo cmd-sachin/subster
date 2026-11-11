@@ -32,7 +32,7 @@ function Logo({ name, size }: { name: string; size: number }) {
   return <AppLogo providerId={look?.providerId ?? provider?.id} category={look?.category ?? provider?.category ?? 'Other'} color={look?.color ?? provider?.color ?? '#4d7fa8'} size={size} />;
 }
 
-const tone = (score: number | null) => (score === null ? '#636a77' : score >= 65 ? '#d4ff24' : score >= 40 ? '#7aa7f7' : score > 0 ? '#ffb547' : '#ff6b6b');
+const tone = (score: number | null) => (score === null ? '#6c7489' : score >= 65 ? '#34d399' : score >= 40 ? '#6aa8ff' : score > 0 ? '#ff9f43' : '#ff6b6b');
 const verdict = (score: number | null, hours: number) => (score === null ? 'Not scored' : score >= 65 ? 'Earning its place' : score >= 40 ? 'Fair' : score > 0 || hours > 0 ? 'Low value' : 'Unused');
 
 export function ValueBoard({ widgetApi, dataMapping }: AgWidgetParams) {

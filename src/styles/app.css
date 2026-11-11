@@ -3,29 +3,34 @@
 /* Design tokens. The shell, the Bryntum timeline and the AG Studio theme all read these. */
 :root {
   color-scheme: dark;
-  /* The palette: near-black, one blue, one lime. Everything else is derived from these. */
-  --black: #030407;
-  --blue: #1558c9;
-  --lime: #d4ff24;
+  /* The palette comes from the Subster logo: deep navy black, its blue and its yellow. */
+  --black: #02030c;
+  --blue: #0473fd;
+  --blue-deep: #0035c5;
+  --yellow: #fed106;
+  --orange: #fdb10e;
 
   --canvas: var(--black);
-  --surface: #090b10;
-  --sunken: #10131a;
-  --ink: #f3f5f7;
-  --muted: #9aa1ad;
-  --faint: #636a77;
-  --line: #1b1f28;
-  --hairline: rgba(255, 255, 255, 0.08);
-  --accent: var(--lime);
-  --accent-soft: rgba(212, 255, 36, 0.12);
-  --good: var(--lime);
-  --warn: #ffb547;
-  --warn-soft: rgba(255, 181, 71, 0.14);
+  --surface: #070a17;
+  --sunken: #0c1022;
+  --ink: #f5f7fb;
+  --muted: #a3abbd;
+  --faint: #6c7489;
+  --line: #171c30;
+  --hairline: rgba(150, 170, 255, 0.11);
+  /* Yellow is the one call to action and highlight. Blue carries selection and information. */
+  --accent: var(--yellow);
+  --accent-soft: rgba(254, 209, 6, 0.13);
+  /* Good is green so it is never mistaken for the yellow accent or the orange warning. */
+  --good: #34d399;
+  --good-soft: rgba(52, 211, 153, 0.14);
+  --warn: #ff9f43;
+  --warn-soft: rgba(255, 159, 67, 0.15);
   --bad: #ff6b6b;
   --bad-soft: rgba(255, 107, 107, 0.14);
-  /* Blue as text needs lifting to stay readable on black; fills use --blue itself. */
-  --info: #7aa7f7;
-  --info-soft: rgba(21, 88, 201, 0.24);
+  /* Blue as text needs lifting to stay readable on navy; fills use --blue itself. */
+  --info: #6aa8ff;
+  --info-soft: rgba(4, 115, 253, 0.2);
 }
 
 @theme inline {
@@ -39,6 +44,8 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-blue: var(--blue);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
@@ -56,7 +63,8 @@ body {
 
 body {
   background:
-    radial-gradient(1100px 420px at 20% -18%, rgba(21, 88, 201, 0.22), transparent 70%),
+    radial-gradient(1100px 460px at 18% -18%, rgba(4, 115, 253, 0.2), transparent 70%),
+    radial-gradient(700px 320px at 96% -12%, rgba(254, 209, 6, 0.06), transparent 70%),
     var(--canvas);
   background-attachment: fixed;
   color: var(--ink);
@@ -67,11 +75,16 @@ body {
   letter-spacing: -0.006em;
 }
 
-/* The one surface: flat, hairline border, modest radius. No blur, no glow. */
+/* The one surface: a soft navy card with a hairline border and a generous radius. */
 .panel {
-  background: var(--surface);
+  background: linear-gradient(180deg, rgba(120, 150, 255, 0.035), transparent 120px), var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: 14px;
+  border-radius: 18px;
+}
+
+/* The brand gradient, for the few places that should feel like the logo. */
+.brand-blue {
+  background: linear-gradient(135deg, var(--blue), var(--blue-deep));
 }
 
 /* Small uppercase label used above figures and sections. */
@@ -100,11 +113,11 @@ button:disabled {
 }
 
 ::selection {
-  background: rgba(212, 255, 36, 0.3);
+  background: rgba(254, 209, 6, 0.3);
 }
 
 * {
-  scrollbar-color: #232937 transparent;
+  scrollbar-color: #232b4a transparent;
   scrollbar-width: thin;
 }
 
@@ -150,8 +163,8 @@ button:disabled {
 
 /* Analytics keeps the app palette but with a library feel: flat black, heavy titles, system type. */
 .library {
-  --lib-surface: #0b0e13;
-  --lib-raised: #161a22;
+  --lib-surface: #080b18;
+  --lib-raised: #121735;
   --lib-line: rgba(255, 255, 255, 0.08);
   background: var(--black);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif;

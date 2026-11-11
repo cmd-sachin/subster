@@ -5,7 +5,7 @@ Reports how long each subscription app was on screen, so the web app can compare
 - Asks the server which apps belong to tracked subscriptions (`GET /api/usage`).
 - Reads daily foreground minutes for those apps only, with `UsageStatsManager`.
 - Uploads daily totals (`POST /api/usage`). No titles, content or credentials are read or sent.
-- Syncs on demand and every 6 hours in the background (WorkManager).
+- Syncs on demand and every 15 minutes in the background (WorkManager, the shortest interval Android allows).
 
 ## Run
 
