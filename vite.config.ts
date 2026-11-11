@@ -8,5 +8,11 @@ export default defineConfig({
   server: { port: 3000 },
   resolve: { tsconfigPaths: true },
   // tanstackStart() must come before the React plugin.
-  plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
+  plugins: [
+    tailwindcss(),
+    tanstackStart(),
+    // On Vercel nothing stays running, so the daily background work is a scheduled call.
+    nitro({ vercel: { config: { version: 3, crons: [{ path: '/api/cron', schedule: '30 2 * * *' }] } } }),
+    viteReact(),
+  ],
 });

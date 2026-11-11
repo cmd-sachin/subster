@@ -17,7 +17,7 @@ async function POST({ request }: RouteContext) {
   }
   // The event carries no account: it belongs to whoever holds that agreement.
   const agreement = event.resource?.billing_agreement_id ?? event.resource?.id ?? '';
-  const owner = findUser((data) => data.subscriptions.some((s) => (agreement && s.paypalSubscriptionId === agreement) || (event.resource?.custom_id && s.id === event.resource.custom_id)));
+  const owner = await findUser((data) => data.subscriptions.some((s) => (agreement && s.paypalSubscriptionId === agreement) || (event.resource?.custom_id && s.id === event.resource.custom_id)));
   if (!owner) return json({ handled: 'no account holds this agreement' });
   const { handled } = await runAs(owner, () => handlePayPalEvent(event));
   return json({ handled });

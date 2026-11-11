@@ -4,6 +4,7 @@ import { endSession, login, publicAccount, register, startSession, type Account 
 import { checkEmailCode, finishSecondStep, needsSecondStep, sendEmailCode } from '@/server/auth-factors';
 import { body, handle, json, type RouteContext } from '@/server/http';
 import { db, runAs, save } from '@/server/store';
+import { loadUsers } from '@/server/users';
 
 interface Input {
   email: string;
@@ -34,6 +35,7 @@ async function POST({ request }: RouteContext) {
   if (input.create) {
     const account = register({ email: input.email ?? '', name: input.name ?? '', password: input.password ?? '' });
     // A new account starts in the currency chosen at sign-up.
+    await loadUsers([account.id]);
     if (input.currency && ['INR', 'USD', 'EUR', 'GBP'].includes(input.currency)) {
       runAs(account.id, () => {
         db().settings.currency = input.currency!;

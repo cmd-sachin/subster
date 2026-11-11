@@ -55,8 +55,15 @@ export function LiveUpdates() {
       // Several saves in a burst become one re-fetch.
       timer = setTimeout(() => void client.invalidateQueries({ queryKey: STATE_KEY }), 150);
     };
+    // No stream on this server (it answered "no content"): look for changes every so often.
+    let poll: ReturnType<typeof setInterval> | undefined;
+    source.onerror = () => {
+      if (source.readyState !== EventSource.CLOSED || poll) return;
+      poll = setInterval(() => document.visibilityState === 'visible' && void client.invalidateQueries({ queryKey: STATE_KEY }), 20_000);
+    };
     return () => {
       clearTimeout(timer);
+      clearInterval(poll);
       source.close();
     };
   }, [client]);

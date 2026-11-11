@@ -211,7 +211,7 @@ function diffPlans(before: LivePlan[], after: LivePlan[]): string[] {
 }
 
 /** Re-checks the services the user subscribes to whose plan data is older than a day. */
-async function monitorOnce() {
+export async function monitorOnce() {
   const data = db();
   const current = livePlansForRegion();
   const subscribed = new Set(data.subscriptions.filter((s) => s.providerId && s.status !== 'cancelled').map((s) => s.providerId!));

@@ -1,3 +1,4 @@
+import { remote } from '@/server/vfs';
 import { setCurrency } from '@/domain/dates';
 import { analyze } from '@/domain/intelligence';
 import type { AppState } from '@/domain/types';
@@ -14,9 +15,13 @@ import { livePlansForRegion, planMonitorAvailable, startPlanMonitor } from './pl
 /** Everything the UI needs in one payload. Credentials, tokens and cursors never leave the server. */
 export function buildState(): AppState {
   const data = db();
-  startPlanMonitor();
-  startConnectionMonitor();
-  startAuditSchedule();
+  // Timers only make sense where the server stays running. On a serverless host a scheduled job
+  // does this work (see routes/api/cron).
+  if (!remote) {
+    startPlanMonitor();
+    startConnectionMonitor();
+    startAuditSchedule();
+  }
   // Amounts in generated text (issues, recommendations) are formatted in the user's currency.
   setCurrency(data.settings.currency);
 

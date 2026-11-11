@@ -19,6 +19,7 @@ import { Route as ServicesRouteImport } from './routes/services'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
+import { Route as ApiCronRouteImport } from './routes/api/cron'
 import { Route as ApiDemoRouteImport } from './routes/api/demo'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as ApiFitRouteImport } from './routes/api/fit'
@@ -110,6 +111,11 @@ const TransactionsRoute = TransactionsRouteImport.update({
 const ApiAgentRoute = ApiAgentRouteImport.update({
   id: '/api/agent',
   path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRoute = ApiCronRouteImport.update({
+  id: '/api/cron',
+  path: '/api/cron',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDemoRoute = ApiDemoRouteImport.update({
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/timeline': typeof TimelineRoute
   '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/fit': typeof ApiFitRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/timeline': typeof TimelineRoute
   '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/fit': typeof ApiFitRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/timeline': typeof TimelineRoute
   '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/fit': typeof ApiFitRoute
@@ -502,6 +511,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/transactions'
     | '/api/agent'
+    | '/api/cron'
     | '/api/demo'
     | '/api/events'
     | '/api/fit'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/transactions'
     | '/api/agent'
+    | '/api/cron'
     | '/api/demo'
     | '/api/events'
     | '/api/fit'
@@ -610,6 +621,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/transactions'
     | '/api/agent'
+    | '/api/cron'
     | '/api/demo'
     | '/api/events'
     | '/api/fit'
@@ -665,6 +677,7 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TransactionsRoute: typeof TransactionsRoute
   ApiAgentRoute: typeof ApiAgentRoute
+  ApiCronRoute: typeof ApiCronRoute
   ApiDemoRoute: typeof ApiDemoRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiFitRoute: typeof ApiFitRoute
@@ -779,6 +792,13 @@ declare module '@tanstack/react-router' {
       path: '/api/agent'
       fullPath: '/api/agent'
       preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron': {
+      id: '/api/cron'
+      path: '/api/cron'
+      fullPath: '/api/cron'
+      preLoaderRoute: typeof ApiCronRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/demo': {
@@ -1089,6 +1109,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TransactionsRoute: TransactionsRoute,
   ApiAgentRoute: ApiAgentRoute,
+  ApiCronRoute: ApiCronRoute,
   ApiDemoRoute: ApiDemoRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiFitRoute: ApiFitRoute,

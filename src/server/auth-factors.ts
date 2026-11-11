@@ -13,6 +13,7 @@ import QRCode from 'qrcode';
 import { accountByEmail, accountById, allAccounts, AuthError, saveAccounts, type Account } from './auth';
 import { DATA_DIR } from './data-dir';
 import { log } from './logger';
+import * as vfs from './vfs';
 
 // Loaded on first use, never at start-up: its certificate code must find the polyfill above already
 // in place, and a bundled build does not promise the order of two plain imports.
@@ -21,18 +22,29 @@ const webauthn = () => import('@simplewebauthn/server');
 const random = (bytes = 24) => crypto.randomBytes(bytes).toString('base64url');
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
-// Short-lived things that need no disk: half-finished sign-ins, emailed codes, passkey challenges.
-interface Pending {
-  tickets: Map<string, { userId: string; until: number }>;
-  codes: Map<string, { hash: string; until: number; tries: number; sentAt: number }>;
-  challenges: Map<string, { challenge: string; userId?: string; until: number }>;
+// Short-lived things: half-finished sign-ins, emailed codes, passkey challenges. They are kept as
+// a document, not in memory, because on a serverless host the request that finishes a sign-in may
+// reach a different copy of the app from the one that started it.
+interface Waiting {
+  tickets: Record<string, { userId: string; until: number }>;
+  codes: Record<string, { hash: string; until: number; tries: number; sentAt: number }>;
+  challenges: Record<string, { challenge: string; userId?: string; until: number }>;
 }
-const held = globalThis as unknown as { __substerPending?: Pending };
-const pending = (held.__substerPending ??= { tickets: new Map(), codes: new Map(), challenges: new Map() });
-const sweep = () => {
+export const PENDING = 'pending.json';
+
+/** Reads what is waiting, dropping whatever has run out. */
+function waiting(): Waiting {
+  let data: Waiting = { tickets: {}, codes: {}, challenges: {} };
+  try {
+    data = { ...data, ...(JSON.parse(vfs.read(PENDING) ?? '{}') as Waiting) };
+  } catch {
+    /* nothing waiting */
+  }
   const now = Date.now();
-  for (const map of [pending.tickets, pending.codes, pending.challenges]) for (const [key, value] of map) if (value.until < now) map.delete(key);
-};
+  for (const group of [data.tickets, data.codes, data.challenges]) for (const [key, value] of Object.entries(group)) if (value.until < now) delete group[key];
+  return data;
+}
+const keep = (data: Waiting) => vfs.write(PENDING, JSON.stringify(data));
 
 // ---- Authenticator app (TOTP) -----------------------------------------------------------------
 
@@ -88,19 +100,21 @@ export function removeTotp(account: Account, code: string) {
 /** Password or email code was right, but this account also needs its authenticator code. */
 export function needsSecondStep(account: Account) {
   if (!account.totp) return undefined;
-  sweep();
+  const data = waiting();
   const ticket = random();
-  pending.tickets.set(ticket, { userId: account.id, until: Date.now() + 5 * 60_000 });
+  data.tickets[ticket] = { userId: account.id, until: Date.now() + 5 * 60_000 };
+  keep(data);
   return ticket;
 }
 
 export function finishSecondStep(ticket: string, code: string): Account {
-  sweep();
-  const waiting = pending.tickets.get(ticket ?? '');
-  const account = waiting && accountById(waiting.userId);
-  if (!waiting || !account?.totp) throw new AuthError(401, 'That sign-in took too long. Start again.');
+  const data = waiting();
+  const held = data.tickets[ticket ?? ''];
+  const account = held && accountById(held.userId);
+  if (!held || !account?.totp) throw new AuthError(401, 'That sign-in took too long. Start again.');
   if (!totpMatches(account.totp.secret, code)) throw new AuthError(401, 'That code does not match.');
-  pending.tickets.delete(ticket);
+  delete data.tickets[ticket];
+  keep(data);
   return account;
 }
 
@@ -130,36 +144,37 @@ async function sendMail(to: string, subject: string, text: string) {
  */
 export async function sendEmailCode(emailInput: string) {
   if (!mailAvailable()) throw new AuthError(400, 'Email codes are not set up on this server.');
-  sweep();
   const account = accountByEmail(emailInput);
   if (!account || account.status !== 'active') return;
-  const last = pending.codes.get(account.email);
+  const data = waiting();
+  const last = data.codes[account.email];
   if (last && Date.now() - last.sentAt < 45_000) return;
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  pending.codes.set(account.email, { hash: sha(code), until: Date.now() + 10 * 60_000, tries: 0, sentAt: Date.now() });
+  data.codes[account.email] = { hash: sha(code), until: Date.now() + 10 * 60_000, tries: 0, sentAt: Date.now() };
+  keep(data);
   try {
     await sendMail(account.email, `${code} is your Subster code`, `Your Subster sign-in code is ${code}.\n\nIt works for 10 minutes. If you did not ask for it, you can ignore this email.`);
     log.info('auth', 'Sign-in code sent by email', { userId: account.id });
   } catch (error) {
-    pending.codes.delete(account.email);
+    delete data.codes[account.email];
+    keep(data);
     log.warn('auth', 'A sign-in code could not be emailed', { error: error instanceof Error ? error.message : String(error) });
     throw new AuthError(502, 'The code could not be sent just now. Try again in a moment.');
   }
 }
 
 export function checkEmailCode(emailInput: string, code: string): Account {
-  sweep();
   const account = accountByEmail(emailInput);
-  const waiting = account && pending.codes.get(account.email);
+  const data = waiting();
+  const sent = account && data.codes[account.email];
   const wrong = new AuthError(401, 'That code is not right, or it has run out. Ask for a new one.');
-  if (!account || !waiting) throw wrong;
-  waiting.tries++;
-  if (waiting.tries > 5) {
-    pending.codes.delete(account.email);
-    throw wrong;
-  }
-  if (sha(String(code ?? '').replace(/\s/g, '')) !== waiting.hash) throw wrong;
-  pending.codes.delete(account.email);
+  if (!account || !sent) throw wrong;
+  sent.tries++;
+  const matches = sent.tries <= 5 && sha(String(code ?? '').replace(/\s/g, '')) === sent.hash;
+  // Used up either by being right or by too many wrong tries.
+  if (matches || sent.tries > 5) delete data.codes[account.email];
+  keep(data);
+  if (!matches) throw wrong;
   if (account.status === 'suspended') throw new AuthError(403, 'This account is suspended. Contact the administrator.');
   return account;
 }
@@ -191,16 +206,18 @@ function site(request: Request) {
 }
 
 const remember = (challenge: string, userId?: string) => {
-  sweep();
+  const data = waiting();
   const id = random(12);
-  pending.challenges.set(id, { challenge, userId, until: Date.now() + 5 * 60_000 });
+  data.challenges[id] = { challenge, userId, until: Date.now() + 5 * 60_000 };
+  keep(data);
   return id;
 };
 const recall = (id: string) => {
-  sweep();
-  const found = pending.challenges.get(id ?? '');
-  pending.challenges.delete(id ?? '');
+  const data = waiting();
+  const found = data.challenges[id ?? ''];
   if (!found) throw new AuthError(400, 'That took too long. Try again.');
+  delete data.challenges[id];
+  keep(data);
   return found;
 };
 
@@ -221,9 +238,9 @@ export async function passkeyRegistrationOptions(account: Account, request: Requ
 
 export async function addPasskey(account: Account, request: Request, input: { challengeId: string; response: RegistrationResponseJSON; name?: string }) {
   const { origin, rpID } = site(request);
-  const waiting = recall(input.challengeId);
-  if (waiting.userId !== account.id) throw new AuthError(400, 'That took too long. Try again.');
-  const result = await (await webauthn()).verifyRegistrationResponse({ response: input.response, expectedChallenge: waiting.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: false }).catch(() => null);
+  const asked = recall(input.challengeId);
+  if (asked.userId !== account.id) throw new AuthError(400, 'That took too long. Try again.');
+  const result = await (await webauthn()).verifyRegistrationResponse({ response: input.response, expectedChallenge: asked.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: false }).catch(() => null);
   if (!result?.verified || !result.registrationInfo) throw new AuthError(400, 'That passkey could not be verified.');
   const { credential } = result.registrationInfo;
   (account.passkeys ??= []).push({
@@ -251,14 +268,14 @@ export async function passkeySignInOptions(request: Request) {
 
 export async function signInWithPasskey(request: Request, input: { challengeId: string; response: AuthenticationResponseJSON }): Promise<Account> {
   const { origin, rpID } = site(request);
-  const waiting = recall(input.challengeId);
+  const asked = recall(input.challengeId);
   const refused = new AuthError(401, 'That passkey is not known here.');
   const account = allAccounts().find((u) => (u.passkeys ?? []).some((k) => k.id === input.response?.id));
   const passkey = account?.passkeys?.find((k) => k.id === input.response.id);
   if (!account || !passkey) throw refused;
   const result = await (await webauthn()).verifyAuthenticationResponse({
     response: input.response,
-    expectedChallenge: waiting.challenge,
+    expectedChallenge: asked.challenge,
     expectedOrigin: origin,
     expectedRPID: rpID,
     requireUserVerification: false,

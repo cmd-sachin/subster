@@ -1,3 +1,4 @@
+import { flush } from '@/server/vfs';
 import { createFileRoute } from '@tanstack/react-router';
 import { analyze } from '@/domain/intelligence';
 import type { StreamEvent } from '@/domain/types';
@@ -43,7 +44,8 @@ async function POST({ request }: RouteContext) {
       } catch (error) {
         emit({ type: 'error', message: error instanceof Error ? error.message : String(error) });
       }
-      controller.close();
+      await flush().catch(() => {});
+        controller.close();
     },
   });
   return new Response(stream, { headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' } });

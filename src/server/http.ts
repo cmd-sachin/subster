@@ -4,9 +4,12 @@
 
 import './env';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { accountFor, AuthError, singleUser, type Account, type Permission } from './auth';
+import { accountFor, ACCOUNTS, AuthError, forgetAccounts, singleUser, type Account, type Permission } from './auth';
+import { PENDING } from './auth-factors';
 import { log, requestContext } from './logger';
 import { LOCAL_USER } from './store';
+import { loadUsers } from './users';
+import * as vfs from './vfs';
 
 export interface RouteContext {
   request: Request;
@@ -67,8 +70,12 @@ export function handle(name: string, handler: Handler, options: RouteOptions = {
     const started = performance.now();
     const url = new URL(ctx.request.url);
     const access = options.access ?? 'user';
+    // On a serverless host, fetch what this request needs before looking at it: first who has an
+    // account, then the data of whoever is calling.
+    if (vfs.remote && (await vfs.hydrate([ACCOUNTS, PENDING])).includes(ACCOUNTS)) forgetAccounts();
     const account = singleUser() ? undefined : accountFor(ctx.request, access === 'device');
     const userId = singleUser() ? LOCAL_USER : account?.id;
+    if (userId) await loadUsers([userId]);
     return requestContext.run({ requestId, userId }, () =>
       accountContext.run(account, async () => {
         let response: Response;
@@ -88,6 +95,8 @@ export function handle(name: string, handler: Handler, options: RouteOptions = {
             response = fail(500, 'Something went wrong on the server. The error has been logged.');
           }
         }
+        // Whatever the handler changed goes back to the shared database before the answer does.
+        await vfs.flush().catch((error) => log.error('http', 'Changes could not be saved', { error: error instanceof Error ? error.message : String(error) }));
         const ms = Math.round(performance.now() - started);
         // Polling-style reads are logged at debug so they do not drown out real activity.
         const level = response.status >= 500 ? 'error' : response.status >= 400 && response.status !== 401 ? 'warn' : options.quiet || response.status === 401 ? 'debug' : 'info';

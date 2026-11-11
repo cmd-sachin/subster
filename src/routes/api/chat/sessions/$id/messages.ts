@@ -1,3 +1,4 @@
+import { flush } from '@/server/vfs';
 import { createFileRoute } from '@tanstack/react-router';
 import { body, fail, handle, type RouteContext } from '@/server/http';
 import { runAgent, SWEEP_TASK } from '@/server/agent/run';
@@ -41,6 +42,7 @@ async function POST({ request, params }: RouteContext) {
         { role: 'assistant', content: text, steps, error, at: new Date().toISOString() },
       ]);
       try {
+        await flush().catch(() => {});
         controller.close();
       } catch {
         /* already closed */

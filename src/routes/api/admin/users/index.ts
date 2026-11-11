@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { addUser, allAccounts, guestDemoOpen, publicAccount, setGuestDemo, setSignups, signupsOpen, type Role } from '@/server/auth';
 import { body, currentAccount, handle, json, type RouteContext } from '@/server/http';
 import { db, runAs } from '@/server/store';
+import { loadUsers } from '@/server/users';
 
 // Everyone with an account, with a little about what each one holds. Administrators only.
 function list() {
@@ -15,7 +16,12 @@ function list() {
   };
 }
 
-const GET = () => json(list());
+async function listAll() {
+  await loadUsers(allAccounts().map((a) => a.id));
+  return list();
+}
+
+const GET = async () => json(await listAll());
 
 // Adds a person directly, or opens and closes sign-ups.
 async function POST({ request }: RouteContext) {
@@ -23,7 +29,7 @@ async function POST({ request }: RouteContext) {
   if (typeof input.guestDemo === 'boolean') setGuestDemo(input.guestDemo, currentAccount()?.id ?? 'local');
   else if (typeof input.signups === 'boolean') setSignups(input.signups, currentAccount()?.id ?? 'local');
   else addUser({ email: input.email ?? '', name: input.name ?? '', password: input.password ?? '', role: input.role });
-  return json(list());
+  return json(await listAll());
 }
 
 export const Route = createFileRoute('/api/admin/users/')({

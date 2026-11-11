@@ -1,11 +1,12 @@
 // Persistence. The rest of the server only sees `db()`, `save()` and `reset()`; where the document
-// lives is the adapter's business. The file adapter keeps one JSON document per account on disk,
-// which is right for a single node. A Postgres adapter implements the same two methods.
+// lives is the adapter's business: one JSON document per account, kept as a file on a server with
+// a disk and in a shared database on a serverless host (see ../vfs).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Db } from '@/domain/types';
 import { DATA_DIR } from '../data-dir';
+import * as vfs from '../vfs';
 import { publishTo } from '../events';
 import { requestContext } from '../logger';
 import { emptyDb, SCHEMA_VERSION } from './seed';
@@ -15,21 +16,20 @@ interface StoreAdapter {
   persist(data: Db): void;
 }
 
-function fileAdapter(file: string): StoreAdapter {
+/** One JSON document, kept wherever the deployment keeps documents: a file, or the shared database. */
+function documentAdapter(name: string): StoreAdapter {
   return {
     load() {
+      const text = vfs.read(name);
+      if (text === null) return null;
       try {
-        return JSON.parse(fs.readFileSync(file, 'utf8')) as Db;
+        return JSON.parse(text) as Db;
       } catch {
         return null;
       }
     },
     persist(data) {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      // Write-then-rename so a crash mid-write cannot leave a truncated document.
-      const tmp = `${file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(data));
-      fs.renameSync(tmp, file);
+      vfs.write(name, JSON.stringify(data));
     },
   };
 }
@@ -41,7 +41,14 @@ const DATA = DATA_DIR;
 /** Whose data the current request, or background job, is working on. */
 export const currentUserId = () => requestContext.getStore()?.userId ?? LOCAL_USER;
 export const userDir = (userId: string) => (userId === LOCAL_USER ? DATA : path.join(DATA, 'users', userId));
-const adapterFor = (userId: string, file = 'db.json') => fileAdapter(path.join(userDir(userId), file));
+/** The name a document goes by: at the top for the single local user, under the account otherwise. */
+export const documentName = (userId: string, file = 'db.json') => (userId === LOCAL_USER ? file : `users/${userId}/${file}`);
+const adapterFor = (userId: string, file = 'db.json') => documentAdapter(documentName(userId, file));
+
+/** The documents that hold an account's data, to fetch before working on it. */
+export const documentsOf = (userId: string) => [documentName(userId), documentName(userId, 'db.real.json')];
+/** Drops the parsed copy, so the next read sees what was just fetched. */
+export const forget = (userId: string) => void loaded.delete(userId);
 
 /** Runs `fn` as a given account, outside a request: background monitors and webhooks use this. */
 export const runAs = <T>(userId: string, fn: () => T): T => requestContext.run({ requestId: 'background', userId }, fn);
@@ -104,7 +111,7 @@ export function closeDemo(): Db {
   const userId = currentUserId();
   const real = adapterFor(userId, 'db.real.json').load();
   const data = replace(real && real.version === SCHEMA_VERSION && !real.demo ? real : emptyDb(), 'demo closed');
-  fs.rmSync(path.join(userDir(userId), 'db.real.json'), { force: true });
+  vfs.remove(documentName(userId, 'db.real.json'));
   return data;
 }
 
@@ -112,11 +119,14 @@ export function closeDemo(): Db {
 export function eraseUserData(userId: string) {
   if (userId === LOCAL_USER) return;
   loaded.delete(userId);
-  fs.rmSync(userDir(userId), { recursive: true, force: true });
+  for (const name of documentsOf(userId)) vfs.remove(name);
+  if (!vfs.remote) fs.rmSync(userDir(userId), { recursive: true, force: true });
 }
 
 /** Hands the data kept before accounts existed to the first account, so nothing is lost. */
 export function adoptLocalData(userId: string) {
+  // Only a server with a disk can have data from before accounts existed.
+  if (vfs.remote) return;
   for (const file of ['db.json', 'db.real.json']) {
     const from = path.join(DATA, file);
     if (!fs.existsSync(from) || fs.existsSync(path.join(userDir(userId), file))) continue;

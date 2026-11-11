@@ -3,10 +3,8 @@
 // Passwords are stored only as salted scrypt hashes, sessions only as hashes of their tokens.
 
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { DATA_DIR } from './data-dir';
 import { log } from './logger';
+import * as vfs from './vfs';
 import { adoptLocalData, eraseUserData, LOCAL_USER } from './store';
 
 export type Role = 'admin' | 'user';
@@ -75,7 +73,6 @@ export const publicAccount = ({ id, email, name, role, status, permissions, crea
   security: { totp: Boolean(totp), passkeys: (passkeys ?? []).map((k) => ({ id: k.id, name: k.name, createdAt: k.createdAt })) },
 });
 
-const FILE = path.join(DATA_DIR, 'accounts.json');
 const SESSION_DAYS = 30;
 const COOKIE = 'subster_session';
 const held = globalThis as unknown as { __substerAuth?: AuthDb; __substerAttempts?: Map<string, { count: number; until: number }> };
@@ -87,9 +84,10 @@ function store(): AuthDb {
   if (held.__substerAuth) return held.__substerAuth;
   let data: AuthDb = { users: [], sessions: [], signups: 'open' };
   try {
-    data = { ...data, ...(JSON.parse(fs.readFileSync(FILE, 'utf8')) as AuthDb) };
-  } catch {
-    /* first run */
+    data = { ...data, ...(JSON.parse(vfs.read(ACCOUNTS) ?? '{}') as AuthDb) };
+  } catch (error) {
+    // Unreadable is not the same as empty: starting afresh here would wipe every account.
+    if (vfs.remote) throw error;
   }
   held.__substerAuth = data;
   seedAdmin();
@@ -99,11 +97,13 @@ function store(): AuthDb {
 function persist() {
   const data = store();
   data.sessions = data.sessions.filter((s) => s.expiresAt > Date.now());
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  const tmp = `${FILE}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data), { mode: 0o600 });
-  fs.renameSync(tmp, FILE);
+  vfs.write(ACCOUNTS, JSON.stringify(data));
 }
+
+/** The name of the accounts document, to fetch before a request is looked at. */
+export const ACCOUNTS = 'accounts.json';
+/** Drops the parsed copy, so the next read sees what was just fetched. */
+export const forgetAccounts = () => void (held.__substerAuth = undefined);
 
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 const hashPassword = (password: string, salt: string) => crypto.scryptSync(password, salt, 64).toString('hex');

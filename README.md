@@ -153,11 +153,23 @@ The image runs as an unprivileged user, has a health check, and reads its keys f
 environment. Any host that runs a container with a volume works (Render, Railway, Fly.io, a VM).
 Set `PUBLIC_URL` to the public https address so PayPal can return to it.
 
-**Vercel.** The project builds and runs there with no configuration, but Vercel functions have no
-lasting disk: accounts and data are lost whenever a function restarts, the live event stream and
-the background monitors do not run between requests, and the app says so on the sign-in screen.
-It is fine for a look, not for real use. Real use on a serverless host needs the store adapter in
-`src/server/store` backed by a database.
+**Vercel, or any serverless host.** Nothing stays running there and no disk lasts, so the app
+keeps its documents in a Redis database that every copy shares, and switches to it by itself when
+it finds the connection settings.
+
+1. Import the repository in Vercel and deploy.
+2. In the project's Storage tab, add an Upstash Redis database (there is a free plan) and connect
+   it. Vercel adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+3. Add the keys from `.env.example`, `PUBLIC_URL` set to the site's address, and `CRON_SECRET`
+   set to a long random string. Redeploy.
+
+What is different there: each request fetches what it needs from the database and writes its
+changes back at the end; the daily audit, connection checks and price reading run from a scheduled
+call to `/api/cron` once a day; and the page checks for changes every 20 seconds, since a
+connection cannot be held open. Two requests changing the same account at the same instant can
+overwrite one another, as each writes the whole document. Server logs are kept per copy and do not
+last. Without the database the app still starts, and says on the sign-in screen that nothing is
+kept.
 
 ## Sponsor technology
 
@@ -182,7 +194,9 @@ Run and checked:
 - The Chrome extension, loaded in Chrome: it synced and reported a site as in use within seconds
   (before device keys were added; the key path is covered by the end-to-end test, not in Chrome).
 - Accounts, permissions, onboarding, the demo and its ending, authenticator codes and email
-  codes, and the guest demo: 71 end-to-end checks, run against the dev server and the built container. Passkeys and
+  codes, and the guest demo: 71 end-to-end checks, run against the dev server, the built container,
+  and the serverless storage path (with a stand-in for the database, `tests/fake-upstash.mjs`).
+  Two copies of the built app sharing that database were also checked against each other. Passkeys and
   the extension's self set-up were run in Chrome (passkeys with a virtual authenticator).
 - Email codes were run through a test outbox, not through a real email provider.
 
@@ -196,8 +210,8 @@ Written but not run against the real service:
 
 ## Limits
 
-- **Storage is files.** One JSON document per account, on one node. It suits a small deployment;
-  a larger one needs the store adapter backed by a database.
+- **Storage is one JSON document per account**, in files or in Redis. It suits a small
+  deployment; a larger one wants a real database behind the same adapter.
 - **Forgotten passwords** are recovered with an email code where email is set up; otherwise an
   administrator sets a new one.
 - **PayPal bills subscriptions in US dollars here**, so only dollar-priced plans can be started
@@ -244,6 +258,7 @@ src/
     integrations/  one module per outside system (paypal.ts, bank/)
     services/      use cases: actions (the permission boundary), chat, connections, refunds, plans
     agent/         tools, the audit loop, the fit check, the daily schedule
+    vfs.ts         where documents live: files on a server with a disk, Redis on a serverless host
     store/         one document per account behind an adapter, and the sample data
   routes/          pages, and server routes under routes/api
   components/      UI: chat, walkthrough, notifications, timeline (Bryntum), studio/ (AG Studio)
