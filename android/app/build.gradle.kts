@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "ai.subsense.companion"
+    namespace = "ai.subster.companion"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ai.subsense.companion"
+        applicationId = "ai.subster.companion"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

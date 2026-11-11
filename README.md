@@ -1,4 +1,4 @@
-# SubSense
+# Subster
 
 An agent that makes every subscription earn its place. It reads your own bank, statement and
 PayPal data, measures how much you actually use what you pay for, and proposes what to do before
@@ -23,8 +23,14 @@ npm test                    # statement parser tests (57 cases)
 npm run smoke               # end-to-end checks against the dev server. ERASES stored data.
 ```
 
-**There is no sample data and no simulated mode.** A fresh install is empty. A service without
+**There is no simulated mode for integrations.** A fresh install is empty. A service without
 keys is shown as not connected, and the features that need it say so.
+
+**Demo data is separate and labelled.** Connections has an "Open demo data" button that fills
+the app with 13 made-up subscriptions, a year of payments and 60 days of phone and browser
+usage, built to trigger each thing the product does (pause, downgrade, duplicate, unused, trial
+ending, failed payment, price rise). While it is open the sidebar says "Demo data". Your own data
+is set aside in `.data/db.real.json` and restored unchanged when you close the demo.
 
 | To get | You need |
 | --- | --- |
@@ -54,7 +60,7 @@ or a named tunnel gives a stable one.
 ## What it does
 
 1. **Follows the money.** Netflix, Hotstar, SonyLIV, PlayStation, Jio, Airtel and the rest publish
-   no billing APIs, so SubSense reads where they all surface: a linked bank account, an uploaded
+   no billing APIs, so Subster reads where they all surface: a linked bank account, an uploaded
    statement, or a PayPal agreement. A catalog of 273 apps in 13 categories maps statement text to the service, its
    plans, its Android app and its official account page. Regular payments the catalog does not
    know are held for you to confirm.
@@ -74,7 +80,7 @@ or a named tunnel gives a stable one.
    then is the subscription recorded.
 6. **Lists every service, with its logo.** The Services page shows each service with its brand mark, plans, what you pay, and its account
    page. Signing in to a provider is done on the provider's side: OAuth where it exists (Spotify),
-   the provider's own page otherwise. SubSense never asks for a provider password.
+   the provider's own page otherwise. Subster never asks for a provider password.
    Logos come from Simple Icons (157 apps, bundled; regenerate with `npm run logos`) and otherwise
    from the provider's own site icon, fetched through Google's favicon service. Apps whose prices
    could not be stated with confidence are listed without a plan table rather than with guesses.
@@ -85,8 +91,8 @@ or a named tunnel gives a stable one.
    services you subscribe to every 6 hours and records changes. This needs `GEMINI_API_KEY`;
    without it the page shows built-in catalog prices, labelled as not live. `src/server/services/plans.ts`
 8. **Logs everything.** Structured logs for every request, agent run, tool call, PayPal and bank
-   call, with request ids, secrets redacted, on disk at `.data/logs/app.log` and live on the Logs
-   page.
+   call, with request ids, secrets redacted, on disk at `.data/logs/app.log` and over
+   `/api/logs`.
 
 ## The agentic workflow
 
@@ -173,12 +179,15 @@ the UI.
   only to RBI, SEBI, IRDAI or PFRDA regulated entities. For an Indian account, statement upload is
   the route that works today.
 - **Statements** are read as CSV or delimited text. PDF and Excel exports are not supported.
-- **Usage** is phone screen time. TV and console use are invisible to it.
+- **Usage** is phone screen time (Android companion) plus time on a service's site in Chrome
+  (browser extension). TV, console and desktop app use are invisible to it.
 - **PayPal** can only act on agreements PayPal manages, and bills subscriptions in USD here (its
   subscription billing does not support INR), so only dollar-priced plans can be started from here.
-- **Catalog prices** are a built-in snapshot, mostly US list prices, and go stale. Only Claude and
-  Google AI were checked against the official pages (2026-11-10). Live checks replace them per
-  service once a Gemini key is set.
+- **Catalog prices** are a built-in snapshot and go stale: US list prices, plus Indian rupee list
+  prices for 23 widely used services. The rupee prices are from memory, not read from the
+  official pages; only Claude and Google AI were checked against them (2026-11-10). Services with
+  no price in the user's currency show the US list price, labelled as such. Live checks replace
+  catalog prices per service once the Gemini key has Google Search grounding quota.
 - **Value scoring** uses per-category "fair cost per hour" benchmarks scaled per currency. They
   are judgement calls in `domain/intelligence.ts`, not measured data.
 - **Not yet run against the real services:** the Gemini agent loop and Studio assistant, PayPal

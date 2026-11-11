@@ -1,4 +1,4 @@
-package ai.subsense.companion
+package ai.subster.companion
 
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager

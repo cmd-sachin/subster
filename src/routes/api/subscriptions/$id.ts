@@ -8,7 +8,7 @@ import type { Category, Coverage, Policy } from '@/domain/types';
 import { setCategory } from '@/server/services/subscriptions';
 
 const POLICIES: Policy[] = ['ask', 'auto', 'locked'];
-const COVERAGE: Coverage[] = ['phone', 'phone+tv', 'none'];
+const COVERAGE: Coverage[] = ['phone', 'web', 'phone+web', 'phone+tv', 'none'];
 
 // User-owned settings for one subscription: how much the agent may do, and what usage covers.
 async function PATCH({ request, params }: RouteContext) {

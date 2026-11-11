@@ -1,4 +1,4 @@
-// The starting document. SubSense ships with no data: everything in it comes from the user's own
+// The starting document. Subster ships with no data: everything in it comes from the user's own
 // bank, statements, PayPal account, linked apps or manual entries.
 
 import type { Db } from '@/domain/types';

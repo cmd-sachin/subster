@@ -51,6 +51,9 @@ function luminance(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// Inline rather than utility classes: the logo is also drawn inside AG Studio widgets.
+const TILE = { display: 'flex', flexShrink: 0, alignItems: 'center', justifyContent: 'center' } as const;
+
 interface Props {
   /** Catalog id. Subscriptions that are not in the catalog pass their category and colour instead. */
   providerId?: string;
@@ -71,7 +74,7 @@ export function AppLogo({ providerId, category, color, size = 40 }: Props) {
     const background = light < 0.03 ? '#262b36' : mark.hex;
     const glyph = light > 0.6 ? '#111318' : '#ffffff';
     return (
-      <span className="flex shrink-0 items-center justify-center" style={{ width: size, height: size, borderRadius: radius, background }} role="img" aria-label={`${mark.title} logo`}>
+      <span style={{ ...TILE, width: size, height: size, borderRadius: radius, background }} role="img" aria-label={`${mark.title} logo`}>
         <svg viewBox="0 0 24 24" width={size * 0.56} height={size * 0.56} fill={glyph} aria-hidden="true">
           <path d={mark.path} />
         </svg>
@@ -81,7 +84,7 @@ export function AppLogo({ providerId, category, color, size = 40 }: Props) {
 
   if (app && !iconFailed) {
     return (
-      <span className="flex shrink-0 items-center justify-center overflow-hidden bg-white" style={{ width: size, height: size, borderRadius: radius }}>
+      <span style={{ ...TILE, overflow: 'hidden', background: '#ffffff', width: size, height: size, borderRadius: radius }}>
         <img src={siteIcon(app)} alt={`${app.name} logo`} width={Math.round(size * 0.68)} height={Math.round(size * 0.68)} loading="lazy" referrerPolicy="no-referrer" onError={() => setIconFailed(true)} />
       </span>
     );
@@ -89,7 +92,7 @@ export function AppLogo({ providerId, category, color, size = 40 }: Props) {
 
   const Icon = CATEGORY_ICON[category];
   return (
-    <span className="flex shrink-0 items-center justify-center" style={{ width: size, height: size, borderRadius: radius, background: `linear-gradient(150deg, ${color}, color-mix(in oklab, ${color} 55%, #0a0d14))` }} aria-hidden="true">
+    <span style={{ ...TILE, color: '#ffffff', width: size, height: size, borderRadius: radius, background: `linear-gradient(150deg, ${color}, color-mix(in oklab, ${color} 55%, #0a0d14))` }} aria-hidden="true">
       <Icon size={size * 0.45} strokeWidth={1.75} />
     </span>
   );

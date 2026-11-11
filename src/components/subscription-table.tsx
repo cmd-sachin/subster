@@ -17,7 +17,7 @@ const VERDICT: Record<Verdict, { label: string; tone: string; bar: string }> = {
 };
 
 const POLICY_LABEL: Record<Policy, string> = { ask: 'Ask me first', auto: 'Auto-pause if unused', locked: 'Never touch' };
-const COVERAGE_LABEL: Record<Coverage, string> = { phone: 'Phone only', 'phone+tv': 'Phone + TV', none: 'No usage data' };
+const COVERAGE_LABEL: Record<Coverage, string> = { phone: 'Phone only', web: 'Browser only', 'phone+web': 'Phone + browser', 'phone+tv': 'Everywhere, TV included', none: 'No usage data' };
 
 export function SubscriptionTable() {
   const { state, mutate } = useApp();
@@ -151,8 +151,8 @@ function Detail({ insight: i, onChange }: { insight: Insight; onChange: (body: {
           <span className="font-medium capitalize">{i.recommendation.action.replace('_', ' ')}:</span> {i.recommendation.reason}{' '}
           <span className="text-faint">({i.recommendation.confidence} confidence)</span>
         </p>
-        {i.sub.category === 'Streaming' && i.sub.coverage === 'phone' && (
-          <p className="text-[12px] text-muted">Usage here is phone screen time only. If you watch on a TV, say so on the right and the agent will stop treating this as low use.</p>
+        {i.sub.category === 'Streaming' && i.sub.coverage !== 'phone+tv' && i.sub.coverage !== 'none' && (
+          <p className="text-[12px] text-muted">Usage here is measured on your phone and browser only. If you watch on a TV, say so on the right and the agent will stop treating this as low use.</p>
         )}
         {i.sub.status === 'paused' && (
           <button onClick={() => onChange({ resume: true })} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[13px] hover:bg-white/[0.07]">

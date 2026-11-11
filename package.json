@@ -1,5 +1,5 @@
 {
-  "name": "subsense",
+  "name": "subster",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,10 +8,11 @@
     "prebuild": "node scripts/copy-vendor.mjs",
     "build": "vite build",
     "start": "node .output/server/index.mjs",
-    "lint": "eslint src scripts vite.config.ts eslint.config.mjs",
+    "lint": "eslint src scripts extension vite.config.ts eslint.config.mjs",
     "typecheck": "tsc --noEmit",
     "smoke": "python3 scripts/smoke_test.py",
     "test": "node --experimental-strip-types scripts/statement_test.ts",
+    "test:extension": "node scripts/extension_test.mjs",
     "logos": "node --experimental-strip-types scripts/gen-logos.mjs",
     "gateway": "node scripts/webhook-gateway.mjs",
     "tunnel": "npx --yes cloudflared tunnel --url http://localhost:3001"

@@ -47,10 +47,10 @@ export function setupSteps(state: AppState) {
       key: 'usage',
       icon: Smartphone,
       title: 'Measure your usage',
-      body: 'The Android companion reports screen time per subscription app, nothing else.',
+      body: 'The browser extension and the Android companion report time per subscription, nothing else.',
       unlocks: 'Value scores and cancel advice',
       to: '/connect' as const,
-      cta: 'Set up the companion',
+      cta: 'Set up usage tracking',
       done: state.usage.length > 0,
       status: state.usage.length > 0 ? 'Reporting' : undefined,
     },
@@ -93,7 +93,7 @@ export function Setup({ state }: { state: AppState }) {
       <header className="border-b border-[var(--hairline)] px-6 py-5">
         <h2 className="text-[18px] font-semibold tracking-[-0.01em]">Get set up</h2>
         <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
-          SubSense starts empty and only ever holds your own data. Start with the first step; each one after it makes the agent more useful.
+          Subster starts empty and only ever holds your own data. Start with the first step; each one after it makes the agent more useful.
         </p>
       </header>
       <ol className="grid divide-y divide-[var(--hairline)] lg:grid-cols-4 lg:divide-x lg:divide-y-0">

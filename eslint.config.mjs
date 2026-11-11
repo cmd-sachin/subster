@@ -9,4 +9,5 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   { plugins: { 'react-hooks': reactHooks }, rules: reactHooks.configs.recommended.rules },
   { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
+  { files: ['extension/**'], languageOptions: { globals: { chrome: 'readonly' } } },
 );

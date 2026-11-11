@@ -7,8 +7,8 @@ import type { LiveEvent, LogEntry } from '@/domain/types';
 
 type Listener = (event: LiveEvent) => void;
 
-const bus = globalThis as unknown as { __subsenseListeners?: Set<Listener> };
-const listeners = (bus.__subsenseListeners ??= new Set<Listener>());
+const bus = globalThis as unknown as { __substerListeners?: Set<Listener> };
+const listeners = (bus.__substerListeners ??= new Set<Listener>());
 
 export function subscribe(listener: Listener) {
   listeners.add(listener);

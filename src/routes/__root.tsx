@@ -11,7 +11,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'SubSense' },
+      { title: 'Subster' },
       { name: 'description', content: 'An agent that makes every subscription earn its place.' },
     ],
     links: [

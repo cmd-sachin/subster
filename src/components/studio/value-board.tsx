@@ -6,7 +6,10 @@
 import type { AgWidgetField, AgWidgetParams } from 'ag-studio';
 import { AgNoDataOverlay } from 'ag-studio-react';
 import { useEffect, useState } from 'react';
+import { AppLogo } from '@/components/app-logo';
+import { providerForName } from '@/domain/catalog';
 import { money } from '@/domain/dates';
+import type { Category } from '@/domain/types';
 
 type Mapping = Partial<Record<'label' | 'score' | 'cost' | 'hours', AgWidgetField[]>>;
 
@@ -17,8 +20,20 @@ interface Row {
   hours: number;
 }
 
+/**
+ * How each subscription looks, by name: its catalog entry, category and colour. Studio hands a
+ * widget only the fields it queries, so the dashboard fills this in from the app state.
+ */
+export const subscriptionLooks = new Map<string, { providerId?: string; category: Category; color: string }>();
+
+function Logo({ name, size }: { name: string; size: number }) {
+  const look = subscriptionLooks.get(name);
+  const provider = look?.providerId ? undefined : providerForName(name);
+  return <AppLogo providerId={look?.providerId ?? provider?.id} category={look?.category ?? provider?.category ?? 'Other'} color={look?.color ?? provider?.color ?? '#4d7fa8'} size={size} />;
+}
+
 const tone = (score: number | null) => (score === null ? '#636a77' : score >= 65 ? '#d4ff24' : score >= 40 ? '#7aa7f7' : score > 0 ? '#ffb547' : '#ff6b6b');
-const verdict = (score: number | null) => (score === null ? 'Not scored' : score >= 65 ? 'Earning its place' : score >= 40 ? 'Fair' : score > 0 ? 'Low value' : 'Unused');
+const verdict = (score: number | null, hours: number) => (score === null ? 'Not scored' : score >= 65 ? 'Earning its place' : score >= 40 ? 'Fair' : score > 0 || hours > 0 ? 'Low value' : 'Unused');
 
 export function ValueBoard({ widgetApi, dataMapping }: AgWidgetParams) {
   const mapping = dataMapping as Mapping;
@@ -67,22 +82,7 @@ export function ValueBoard({ widgetApi, dataMapping }: AgWidgetParams) {
           style={{ display: 'grid', gridTemplateColumns: '22px 40px minmax(0, 1fr) 120px', alignItems: 'center', gap: 12, padding: '8px 4px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}
         >
           <span style={{ color: '#9aa1ad', fontSize: 13, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: 800,
-              fontSize: 16,
-              color: '#030407',
-              background: tone(row.score),
-            }}
-          >
-            {row.label.charAt(0)}
-          </span>
+          <Logo name={row.label} size={40} />
           <span style={{ minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</span>
             <span style={{ display: 'block', fontSize: 12, color: '#9aa1ad', fontVariantNumeric: 'tabular-nums' }}>
@@ -91,7 +91,7 @@ export function ValueBoard({ widgetApi, dataMapping }: AgWidgetParams) {
           </span>
           <span title={row.score === null ? 'No usage-based score' : `Value score ${row.score} of 100`}>
             <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: tone(row.score), fontWeight: 600 }}>
-              <span>{verdict(row.score)}</span>
+              <span>{verdict(row.score, row.hours)}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{row.score ?? ''}</span>
             </span>
             <span style={{ display: 'block', height: 3, marginTop: 5, borderRadius: 2, background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>

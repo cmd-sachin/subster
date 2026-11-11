@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppLogo } from '@/components/app-logo';
 import { useApp } from '@/components/app-state';
 import { CATEGORY_ICON } from '@/components/category-icon';
-import { CATALOG, catalogPlans, CATEGORIES, CATEGORY_LABEL, type Provider } from '@/domain/catalog';
+import { CATALOG, catalogPlans, webDomains, CATEGORIES, CATEGORY_LABEL, type Provider } from '@/domain/catalog';
 import { cycleShort, money, shortDate, today } from '@/domain/dates';
 import type { AppState, BillingCycle, Category, Insight, LivePlan } from '@/domain/types';
 
@@ -41,7 +41,7 @@ function Services() {
       <header>
         <h1 className="text-[26px] font-semibold tracking-tight">Services</h1>
         <p className="mt-1.5 max-w-3xl text-[14px] leading-relaxed text-muted">
-          Every subscription service SubSense knows: {CATALOG.length} of them across {CATEGORIES.length} categories. Open one to see its current plans, what you pay, sign in to your account
+          Every subscription service Subster knows: {CATALOG.length} of them across {CATEGORIES.length} categories. Open one to see its current plans, what you pay, sign in to your account
           there, or start a subscription through PayPal. You can also just tell the agent, for example "subscribe to Spotify Premium Duo".
         </p>
       </header>
@@ -230,7 +230,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
                   ? regional
                     ? `These prices are from the built-in catalog and may be out of date.`
                     : `These are US dollar list prices from the built-in catalog. They may be out of date and are not what ${app.name} charges in your region.`
-                  : `SubSense has no confirmed price list for ${app.name}, so none is guessed here.`}{' '}
+                  : `Subster has no confirmed price list for ${app.name}, so none is guessed here.`}{' '}
                 {live?.error && <span className="text-warn">The last check of the official site failed: {live.error}</span>}
               </p>
             )}
@@ -365,7 +365,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
               ) : (
                 <div className="space-y-3">
                   <p className="text-[13px] leading-relaxed text-muted">
-                    Sign in on Spotify's own page. SubSense never sees your password: it receives permission to read your plan and your recently played tracks, which become real usage
+                    Sign in on Spotify's own page. Subster never sees your password: it receives permission to read your plan and your recently played tracks, which become real usage
                     for the value score.
                   </p>
                   {state.integrations.spotify ? (
@@ -392,7 +392,7 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
             ) : (
               <div className="space-y-3">
                 <p className="text-[13px] leading-relaxed text-muted">
-                  {app.name} has no public sign-in for other apps, so you sign in on its own site, where you can see and change your plan. SubSense never asks for your {app.name} password.
+                  {app.name} has no public sign-in for other apps, so you sign in on its own site, where you can see and change your plan. Subster never asks for your {app.name} password.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <a href={app.manageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3 py-2 text-[13px] font-semibold text-canvas hover:opacity-90">
@@ -406,10 +406,11 @@ function Detail({ app, insight, state, onClose }: { app: Provider; insight?: Ins
             )}
           </Section>
 
-          <Section title="How SubSense tracks it">
+          <Section title="How Subster tracks it">
             <ul className="space-y-1.5 text-[13px] text-muted">
               <li>Payments: matched from your bank feed, statements and PayPal by the merchant name.</li>
-              <li>{app.androidPackage ? `Usage: screen time of the Android app (${app.androidPackage}).` : 'Usage: no phone app to measure, so it is tracked for price and renewal only.'}</li>
+              <li>{app.androidPackage ? `Phone usage: screen time of the Android app (${app.androidPackage}).` : 'Phone usage: no Android app to measure.'}</li>
+              <li>{webDomains(app).length > 0 ? `Web usage: time on ${webDomains(app).join(', ')} in a browser with the Subster extension.` : 'Web usage: not measured, because its site is shared with other products.'}</li>
             </ul>
           </Section>
         </div>

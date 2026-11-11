@@ -133,7 +133,7 @@ export async function createAgreement(input: { name: string; price: number; cycl
     });
     const subscription = await subscriptions.createSubscription({
       prefer: 'return=representation',
-      body: { planId: plan.result.id!, customId: input.customId, applicationContext: { brandName: 'SubSense', returnUrl: input.returnUrl, cancelUrl: input.cancelUrl } },
+      body: { planId: plan.result.id!, customId: input.customId, applicationContext: { brandName: 'Subster', returnUrl: input.returnUrl, cancelUrl: input.cancelUrl } },
     });
     const approveUrl = subscription.result.links?.find((l) => l.rel === 'approve')?.href;
     if (!subscription.result.id || !approveUrl) throw new Error('PayPal did not return an approval link.');

@@ -1,11 +1,12 @@
-// Provider catalog: every subscription app SubSense knows. For each one: how it appears on a bank
+// Provider catalog: every subscription app Subster knows. For each one: how it appears on a bank
 // or card statement, which Android app measures its use, where the account is managed and
 // cancelled, and its plans. None of these platforms offers a public billing API, so the statement
 // descriptor is the integration point for all of them.
 //
-// Plan prices are indicative list prices in USD and are not fetched live. An app with an empty
-// plan list is one whose prices we could not state with confidence: it is still detected,
-// tracked and linked, but cannot be started from here.
+// Plan prices are indicative list prices and are not fetched live: US dollars, plus rupee prices
+// for services that publish an Indian price list. Services sold only in India carry rupee prices
+// alone. An app with an empty plan list is one whose prices we could not state with confidence:
+// it is still detected, tracked and linked, but cannot be started from here.
 
 import type { BillingCycle, Category, Currency } from './types';
 
@@ -19,7 +20,7 @@ export interface Plan {
 
 /** How a user's own account at the provider can be linked. */
 export type AccountLink =
-  | { type: 'oauth'; provider: 'spotify' } // official OAuth: SubSense never sees the password
+  | { type: 'oauth'; provider: 'spotify' } // official OAuth: Subster never sees the password
   | { type: 'official' }; // no API: the user signs in on the provider's own site
 
 export interface Provider {
@@ -54,7 +55,7 @@ const p = (name: string, category: Category, match: RegExp, manageUrl: string, c
 
 export const CATALOG: Provider[] = [
   // AI
-  p('ChatGPT Plus', 'AI', /openai|chatgpt/i, 'https://chatgpt.com/#settings/Subscription', '#3f8f7a', [['Plus', 20], ['Pro', 200]], 'com.openai.chatgpt'),
+  p('ChatGPT Plus', 'AI', /openai|chatgpt/i, 'https://chatgpt.com/#settings/Subscription', '#3f8f7a', [['Plus', 20], ['Pro', 200], ['Go', 399, 'monthly', 'INR'], ['Plus', 1999, 'monthly', 'INR'], ['Pro', 19900, 'monthly', 'INR']], 'com.openai.chatgpt'),
   // Plans as listed on claude.com/pricing on 2026-11-10.
   p('Claude', 'AI', /anthropic|claude\.ai/i, 'https://claude.ai/settings/billing', '#b8693d', [['Pro', 20], ['Pro (annual)', 200, 'yearly'], ['Max', 100], ['Ultra', 200]], 'com.anthropic.claude'),
   p('Perplexity Pro', 'AI', /perplexity/i, 'https://www.perplexity.ai/settings/account', '#3a8a94', [['Pro', 20]], 'ai.perplexity.app.android'),
@@ -65,35 +66,35 @@ export const CATALOG: Provider[] = [
   p('Cursor', 'AI', /cursor\b.*(ai|pro)|anysphere/i, 'https://cursor.com/settings', '#55607a', [['Pro', 20]]),
 
   // Entertainment
-  p('Netflix', 'Streaming', /netflix/i, 'https://www.netflix.com/account', '#d6453d', [['Standard with ads', 7.99], ['Standard', 17.99], ['Premium 4K', 22.99]], 'com.netflix.mediaclient'),
-  p('Prime Video', 'Streaming', /amazon prime|prime video|amzn.*prime/i, 'https://www.amazon.com/gp/video/settings', '#3a8fa3', [['Monthly', 8.99]], 'com.amazon.avod.thirdpartyclient'),
-  p('JioHotstar', 'Streaming', /hotstar|jiohotstar|novi digital/i, 'https://www.hotstar.com/in/mypage', '#2f5fb3', [['Mobile with ads', 9.99], ['Premium', 15.99]], 'in.startv.hotstar'),
+  p('Netflix', 'Streaming', /netflix/i, 'https://www.netflix.com/account', '#d6453d', [['Standard with ads', 7.99], ['Standard', 17.99], ['Premium 4K', 22.99], ['Mobile', 149, 'monthly', 'INR'], ['Basic', 199, 'monthly', 'INR'], ['Standard', 499, 'monthly', 'INR'], ['Premium 4K', 649, 'monthly', 'INR']], 'com.netflix.mediaclient'),
+  p('Prime Video', 'Streaming', /amazon prime|prime video|amzn.*prime/i, 'https://www.amazon.com/gp/video/settings', '#3a8fa3', [['Monthly', 8.99], ['Prime monthly', 299, 'monthly', 'INR'], ['Prime annual', 1499, 'yearly', 'INR']], 'com.amazon.avod.thirdpartyclient'),
+  p('JioHotstar', 'Streaming', /hotstar|jiohotstar|novi digital/i, 'https://www.hotstar.com/in/mypage', '#2f5fb3', [['Mobile', 149, 'quarterly', 'INR'], ['Super', 299, 'quarterly', 'INR'], ['Premium', 499, 'quarterly', 'INR'], ['Premium annual', 1499, 'yearly', 'INR']], 'in.startv.hotstar'),
   p('Disney+', 'Streaming', /disney\s*\+|disney plus|disneyplus/i, 'https://www.disneyplus.com/account/subscription', '#3f6fc4', [['Basic with ads', 9.99], ['Premium', 15.99]], 'com.disney.disneyplus'),
-  p('SonyLIV', 'Streaming', /sony\s*liv|sonyliv|culver max/i, 'https://www.sonyliv.com/usercenter/subscription', '#7a5ab8', [['Premium', 9.99]], 'com.sonyliv'),
-  p('Airtel Xstream Play', 'Streaming', /airtel xstream play|xstream play/i, 'https://www.airtelxstream.in/account', '#c44545', [['Premium', 4.99]], 'tv.accedo.airtel.wynk'),
-  p('ZEE5', 'Streaming', /zee5|zee entertainment/i, 'https://www.zee5.com/myaccount/subscription', '#8a4fbf', [['Premium HD', 6.99]], 'com.graymatrix.did'),
-  p('YouTube Premium', 'Streaming', /youtube\s*premium|google.*youtube/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 13.99], ['Family', 22.99]], 'com.google.android.youtube'),
+  p('SonyLIV', 'Streaming', /sony\s*liv|sonyliv|culver max/i, 'https://www.sonyliv.com/usercenter/subscription', '#7a5ab8', [['Premium', 399, 'monthly', 'INR'], ['Premium annual', 1499, 'yearly', 'INR']], 'com.sonyliv'),
+  p('Airtel Xstream Play', 'Streaming', /airtel xstream play|xstream play/i, 'https://www.airtelxstream.in/account', '#c44545', [['Premium', 149, 'monthly', 'INR']], 'tv.accedo.airtel.wynk'),
+  p('ZEE5', 'Streaming', /zee5|zee entertainment/i, 'https://www.zee5.com/myaccount/subscription', '#8a4fbf', [], 'com.graymatrix.did'),
+  p('YouTube Premium', 'Streaming', /youtube\s*premium|google.*youtube/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 13.99], ['Family', 22.99], ['Individual', 149, 'monthly', 'INR'], ['Family', 299, 'monthly', 'INR']], 'com.google.android.youtube'),
   p('Hulu', 'Streaming', /hulu/i, 'https://secure.hulu.com/account', '#3f9e6b', [['With ads', 9.99], ['No ads', 18.99]], 'com.hulu.plus'),
   p('Max', 'Streaming', /\bhbo\b|\bmax\.com|hbomax/i, 'https://auth.max.com/subscription', '#5b55c9', [['With ads', 9.99], ['Ad-free', 16.99]], 'com.wbd.stream'),
-  p('Apple TV+', 'Streaming', /apple\s*tv/i, 'https://tv.apple.com/settings', '#6b7a8f', [['Monthly', 9.99]], 'com.apple.atve.androidtv.appletv'),
-  p('Crunchyroll', 'Streaming', /crunchyroll/i, 'https://www.crunchyroll.com/account/membership', '#c9772f', [['Fan', 7.99], ['Mega Fan', 11.99]], 'com.crunchyroll.crunchyroid'),
+  p('Apple TV+', 'Streaming', /apple\s*tv/i, 'https://tv.apple.com/settings', '#6b7a8f', [['Monthly', 9.99], ['Monthly', 99, 'monthly', 'INR']], 'com.apple.atve.androidtv.appletv'),
+  p('Crunchyroll', 'Streaming', /crunchyroll/i, 'https://www.crunchyroll.com/account/membership', '#c9772f', [['Fan', 7.99], ['Mega Fan', 11.99], ['Fan', 79, 'monthly', 'INR'], ['Mega Fan', 99, 'monthly', 'INR']], 'com.crunchyroll.crunchyroid'),
 
   // Music and audio
-  p('Spotify', 'Music', /spotify/i, 'https://www.spotify.com/account/subscription/', '#2f9e6b', [['Premium Individual', 11.99], ['Premium Duo', 16.99], ['Premium Family', 19.99]], 'com.spotify.music', { type: 'oauth', provider: 'spotify' }),
-  p('Apple Music', 'Music', /apple music|apple\.com\/bill/i, 'https://music.apple.com/account', '#c2477f', [['Individual', 10.99], ['Family', 16.99]], 'com.apple.android.music'),
+  p('Spotify', 'Music', /spotify/i, 'https://www.spotify.com/account/subscription/', '#2f9e6b', [['Premium Individual', 11.99], ['Premium Duo', 16.99], ['Premium Family', 19.99], ['Premium Lite', 139, 'monthly', 'INR'], ['Premium Standard', 199, 'monthly', 'INR'], ['Premium Platinum', 299, 'monthly', 'INR']], 'com.spotify.music', { type: 'oauth', provider: 'spotify' }),
+  p('Apple Music', 'Music', /apple music|apple\.com\/bill/i, 'https://music.apple.com/account', '#c2477f', [['Individual', 10.99], ['Family', 16.99], ['Student', 59, 'monthly', 'INR'], ['Individual', 119, 'monthly', 'INR'], ['Family', 179, 'monthly', 'INR']], 'com.apple.android.music'),
   p('YouTube Music', 'Music', /youtube music/i, 'https://www.youtube.com/paid_memberships', '#b5651d', [['Individual', 10.99]], 'com.google.android.apps.youtube.music'),
-  p('JioSaavn', 'Music', /saavn/i, 'https://www.jiosaavn.com/me/account', '#3f9e8a', [['Pro', 1.99]], 'com.jio.media.jiobeats'),
-  p('Audible', 'Learning', /audible/i, 'https://www.audible.com/account/overview', '#c9882f', [['Premium Plus', 14.95]], 'com.audible.application'),
+  p('JioSaavn', 'Music', /saavn/i, 'https://www.jiosaavn.com/me/account', '#3f9e8a', [['Pro', 99, 'monthly', 'INR']], 'com.jio.media.jiobeats'),
+  p('Audible', 'Learning', /audible/i, 'https://www.audible.com/account/overview', '#c9882f', [['Premium Plus', 14.95], ['Membership', 199, 'monthly', 'INR']], 'com.audible.application'),
 
   // Gaming
-  p('PlayStation Plus', 'Gaming', /playstation|sony interactive|psn\b|ps plus/i, 'https://www.playstation.com/acct/management', '#3d62c4', [['Essential', 9.99], ['Extra', 14.99], ['Premium', 17.99]], 'com.scee.psxandroid'),
+  p('PlayStation Plus', 'Gaming', /playstation|sony interactive|psn\b|ps plus/i, 'https://www.playstation.com/acct/management', '#3d62c4', [['Essential', 9.99], ['Extra', 14.99], ['Premium', 17.99], ['Essential', 499, 'monthly', 'INR'], ['Extra', 749, 'monthly', 'INR'], ['Deluxe', 849, 'monthly', 'INR']], 'com.scee.psxandroid'),
   p('Xbox Game Pass', 'Gaming', /xbox|game pass/i, 'https://account.microsoft.com/services', '#3f9e4f', [['Core', 9.99], ['Ultimate', 19.99]], 'com.gamepass'),
   p('Nintendo Switch Online', 'Gaming', /nintendo/i, 'https://accounts.nintendo.com/shop/subscription', '#c94545', [['Individual', 3.99]], 'com.nintendo.znca'),
   p('EA Play', 'Gaming', /ea play|electronic arts/i, 'https://myaccount.ea.com/cp-ui/subscription/index', '#c95f45', [['Monthly', 5.99]]),
 
   // Cloud storage
-  p('Google One', 'Storage', /google one|google storage/i, 'https://one.google.com/settings', '#4d7fc9', [['100 GB', 1.99], ['2 TB', 9.99]]),
-  p('iCloud+', 'Storage', /icloud/i, 'https://www.icloud.com/settings/', '#6b7a8f', [['50 GB', 0.99], ['200 GB', 2.99], ['2 TB', 9.99]]),
+  p('Google One', 'Storage', /google one|google storage/i, 'https://one.google.com/settings', '#4d7fc9', [['100 GB', 1.99], ['2 TB', 9.99], ['100 GB', 130, 'monthly', 'INR'], ['2 TB', 650, 'monthly', 'INR']]),
+  p('iCloud+', 'Storage', /icloud/i, 'https://www.icloud.com/settings/', '#6b7a8f', [['50 GB', 0.99], ['200 GB', 2.99], ['2 TB', 9.99], ['50 GB', 75, 'monthly', 'INR'], ['200 GB', 219, 'monthly', 'INR'], ['2 TB', 749, 'monthly', 'INR']]),
   p('Dropbox', 'Storage', /dropbox/i, 'https://www.dropbox.com/account/plan', '#3d6fd6', [['Plus', 11.99]], 'com.dropbox.android'),
   p('OneDrive', 'Storage', /onedrive/i, 'https://account.microsoft.com/services', '#3d7fc4', [['100 GB', 1.99]], 'com.microsoft.skydrive'),
 
@@ -110,29 +111,29 @@ export const CATALOG: Provider[] = [
   p('LinkedIn Premium', 'Productivity', /linkedin/i, 'https://www.linkedin.com/premium/manage', '#3d6fa8', [['Career', 29.99]], 'com.linkedin.android'),
 
   // Mobile recharge
-  p('Jio Prepaid', 'Telecom', /\bjio\b.*(recharge|prepaid|mobility)|reliance jio/i, 'https://www.jio.com/selfcare/plans/mobility/prepaid-plans-list/', '#3d62c4', [['28 days', 3.99], ['84 days', 9.99, 'quarterly']], 'com.jio.myjio'),
-  p('Airtel Prepaid', 'Telecom', /airtel.*(recharge|prepaid|mobile)|bharti airtel/i, 'https://www.airtel.in/recharge-online', '#c44545', [['28 days', 3.99], ['84 days', 9.99, 'quarterly']], 'com.myairtelapp'),
-  p('Vi Prepaid', 'Telecom', /vodafone idea|\bvi\b.*(recharge|prepaid)/i, 'https://www.myvi.in/prepaid/online-mobile-recharge', '#c9456f', [['28 days', 3.99]], 'com.mventus.selfcare.activity'),
+  p('Jio Prepaid', 'Telecom', /\bjio\b.*(recharge|prepaid|mobility)|reliance jio/i, 'https://www.jio.com/selfcare/plans/mobility/prepaid-plans-list/', '#3d62c4', [['28 days, 1.5 GB a day', 299, 'monthly', 'INR'], ['84 days, 2 GB a day', 859, 'quarterly', 'INR']], 'com.jio.myjio'),
+  p('Airtel Prepaid', 'Telecom', /airtel.*(recharge|prepaid|mobile)|bharti airtel/i, 'https://www.airtel.in/recharge-online', '#c44545', [['28 days, 1.5 GB a day', 349, 'monthly', 'INR'], ['84 days, 1.5 GB a day', 859, 'quarterly', 'INR']], 'com.myairtelapp'),
+  p('Vi Prepaid', 'Telecom', /vodafone idea|\bvi\b.*(recharge|prepaid)/i, 'https://www.myvi.in/prepaid/online-mobile-recharge', '#c9456f', [['28 days, 1.5 GB a day', 349, 'monthly', 'INR']], 'com.mventus.selfcare.activity'),
   p('T-Mobile', 'Telecom', /t-mobile|tmobile/i, 'https://www.t-mobile.com/account', '#c9458f', [['Essentials', 50]]),
   p('Verizon Wireless', 'Telecom', /verizon/i, 'https://www.verizon.com/digital/nsa/secure/ui/acct/', '#c94545', [['Unlimited Welcome', 65]]),
 
   // Broadband
-  p('Airtel Xstream Fiber', 'Broadband', /airtel.*(fiber|fibre|broadband|xstream fib)/i, 'https://www.airtel.in/broadband/', '#c44545', [['100 Mbps', 14.99]]),
-  p('JioFiber', 'Broadband', /jio\s*fib(er|re)|jiofiber/i, 'https://www.jio.com/selfcare/plans/fiber/', '#3d62c4', [['100 Mbps', 11.99]]),
-  p('ACT Fibernet', 'Broadband', /act fibernet|atria convergence/i, 'https://selfcare.actcorp.in/', '#c9772f', [['150 Mbps', 12.99]]),
+  p('Airtel Xstream Fiber', 'Broadband', /airtel.*(fiber|fibre|broadband|xstream fib)/i, 'https://www.airtel.in/broadband/', '#c44545', [['40 Mbps', 499, 'monthly', 'INR'], ['100 Mbps', 799, 'monthly', 'INR']]),
+  p('JioFiber', 'Broadband', /jio\s*fib(er|re)|jiofiber/i, 'https://www.jio.com/selfcare/plans/fiber/', '#3d62c4', [['30 Mbps', 399, 'monthly', 'INR'], ['100 Mbps', 699, 'monthly', 'INR']]),
+  p('ACT Fibernet', 'Broadband', /act fibernet|atria convergence/i, 'https://selfcare.actcorp.in/', '#c9772f', []),
   p('Xfinity', 'Broadband', /comcast|xfinity/i, 'https://customer.xfinity.com/#/billing', '#7a4fc9', [['Connect More', 55]]),
   p('Spectrum', 'Broadband', /spectrum|charter comm/i, 'https://www.spectrum.net/billing', '#3d7fc4', [['Internet', 50]]),
 
   // Wellness
   p('Headspace', 'Wellness', /headspace/i, 'https://www.headspace.com/subscriptions/manage', '#d98a2b', [['Monthly', 12.99], ['Annual', 69.99, 'yearly']], 'com.getsomeheadspace.android'),
   p('Calm', 'Wellness', /\bcalm\b/i, 'https://www.calm.com/profile/manage-subscription', '#4d8fc9', [['Monthly', 14.99], ['Annual', 69.99, 'yearly']], 'com.calm.android'),
-  p('Cult.fit', 'Wellness', /cult\.?fit|curefit/i, 'https://www.cult.fit/me', '#c9456f', [['Live', 19.99]], 'fit.cure.android'),
+  p('Cult.fit', 'Wellness', /cult\.?fit|curefit/i, 'https://www.cult.fit/me', '#c9456f', [], 'fit.cure.android'),
   p('Strava', 'Wellness', /strava/i, 'https://www.strava.com/account', '#c9632f', [['Subscription', 11.99]], 'com.strava'),
 
   // Learning
   p('Duolingo', 'Learning', /duolingo/i, 'https://www.duolingo.com/settings/super', '#6f9e2f', [['Super', 12.99]], 'com.duolingo'),
   p('Coursera Plus', 'Learning', /coursera/i, 'https://www.coursera.org/my-purchases', '#3d6fc9', [['Monthly', 59]], 'org.coursera.android'),
-  p('Kindle Unlimited', 'Learning', /kindle/i, 'https://www.amazon.com/kindle-dbs/ku/ku-central', '#3a8fa3', [['Monthly', 11.99]], 'com.amazon.kindle'),
+  p('Kindle Unlimited', 'Learning', /kindle/i, 'https://www.amazon.com/kindle-dbs/ku/ku-central', '#3a8fa3', [['Monthly', 11.99], ['Monthly', 169, 'monthly', 'INR']], 'com.amazon.kindle'),
 
   // News
   p('The New York Times', 'News', /nytimes|new york times|\bnyt\b/i, 'https://myaccount.nytimes.com/seg/subscription', '#7a7f8f', [['All Access', 25]], 'com.nytimes.android'),
@@ -382,6 +383,49 @@ export const CATALOG: Provider[] = [
 const BY_SPECIFICITY = [...CATALOG].sort((a, b) => Number(b.category === 'Broadband') - Number(a.category === 'Broadband'));
 
 export const findProvider = (description: string) => BY_SPECIFICITY.find((entry) => entry.match.test(description));
+/** Sites shared by many products: time on them says nothing about one subscription. */
+const UMBRELLA_DOMAINS = ['google.com', 'amazon.com', 'amazon.in', 'apple.com', 'microsoft.com', 'meta.com', 'intuit.com'];
+const ACCOUNT_HOSTS = /^(account|accounts|myaccount|support|admin|login|auth|secure)\./;
+
+/** Where a service is actually used in a browser, when that differs from its account page. An empty list means web use cannot be measured. */
+const WEB_DOMAINS: Record<string, string[]> = {
+  'chatgpt-plus': ['chatgpt.com', 'chat.openai.com'],
+  'google-ai-gemini': ['gemini.google.com'],
+  'google-one': ['one.google.com', 'drive.google.com', 'photos.google.com'],
+  'github-copilot': [],
+  'prime-video': ['primevideo.com'],
+  'kindle-unlimited': ['read.amazon.com', 'read.amazon.in'],
+  'amazon-music-unlimited': ['music.amazon.com', 'music.amazon.in'],
+  'youtube-premium': ['youtube.com'],
+  'youtube-music': ['music.youtube.com'],
+  jiohotstar: ['hotstar.com', 'jiohotstar.com'],
+  max: ['max.com', 'hbomax.com'],
+  'xbox-game-pass': ['xbox.com'],
+  onedrive: ['onedrive.live.com'],
+  'microsoft-365': ['office.com', 'microsoft365.com', 'cloud.microsoft', 'outlook.live.com'],
+  'microsoft-copilot-pro': ['copilot.microsoft.com'],
+  'geforce-now': ['geforcenow.com'],
+  notion: ['notion.so', 'notion.com'],
+  'x-premium': ['x.com', 'twitter.com'],
+  'meta-verified': [],
+};
+
+/** The domains whose browser time counts as use of this service. The most specific match wins when two services overlap. */
+export function webDomains(provider: Provider): string[] {
+  const override = WEB_DOMAINS[provider.id];
+  if (override) return override;
+  const host = new URL(provider.manageUrl).hostname.replace(/^www\./, '');
+  const labels = host.split('.');
+  const twoPartSuffix = /^(co|com|org|net)\.[a-z]{2}$/.test(labels.slice(-2).join('.'));
+  const registrable = labels.slice(twoPartSuffix ? -3 : -2).join('.');
+  if (!UMBRELLA_DOMAINS.includes(registrable)) return [registrable];
+  // On a shared domain only a product's own subdomain counts (music.apple.com), never its account pages.
+  return host === registrable || ACCOUNT_HOSTS.test(host) ? [] : [host];
+}
+
+/** The country whose prices a currency stands for. Live plan checks are made for this region. */
+export const REGION: Record<Currency, string> = { INR: 'India', USD: 'the United States', EUR: 'Germany', GBP: 'the United Kingdom' };
+
 /** Catalog plans for a region: those priced in the user's currency when any exist, otherwise the USD list. */
 export const catalogPlans = (provider: Provider, currency: Currency) => {
   const regional = provider.plans.filter((plan) => plan.currency === currency);

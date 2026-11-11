@@ -137,8 +137,8 @@ button:disabled {
 }
 
 /* Bryntum Scheduler: sit on the page's navy instead of the theme's neutral gray. */
-.subsense-timeline,
-.subsense-timeline .b-widget {
+.subster-timeline,
+.subster-timeline .b-widget {
   --b-grid-background: transparent;
   --b-grid-cell-background: transparent;
   --b-grid-header-background: rgba(255, 255, 255, 0.03);

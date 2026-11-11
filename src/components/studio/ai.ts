@@ -21,7 +21,7 @@ const PROMPT_STARTERS: AgAiPromptStarter[] = [
   { label: 'Explain this page', prompt: 'Summarise what this page shows and what stands out.' },
 ];
 
-const ADVISOR_INSTRUCTIONS = `You are the SubSense analytics advisor inside a dashboard about one person's subscriptions.
+const ADVISOR_INSTRUCTIONS = `You are the Subster analytics advisor inside a dashboard about one person's subscriptions.
 
 What the data means:
 - subscriptions.valueScore is 0 to 100; higher means better value for money. Below 40 is low value; 0 with zero hours is unused.
@@ -73,8 +73,8 @@ export function buildAi(): AgAiHarnessSetup {
     createAiHarness(api as AgStudioApi, ({ tools, builtIn }) => {
       const specialists = (['data', 'widget', 'page', 'planning'] as const).map((id) => directLlmRunner({ ...builtIn[id], adapter }));
       const advisor = directLlmRunner({
-        id: 'subsense-advisor',
-        name: 'SubSense advisor',
+        id: 'subster-advisor',
+        name: 'Subster advisor',
         description: 'Understands subscription value metrics and coordinates the dashboard specialists.',
         adapter,
         instructions: () => ADVISOR_INSTRUCTIONS,

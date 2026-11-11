@@ -3,11 +3,12 @@ import { handle } from '@/server/http';
 import { paypalMode, recentTransactions } from '@/server/integrations/paypal';
 
 async function GET() {
-  if (paypalMode() !== 'sandbox') return Response.json({ mode: 'simulator', transactions: [] });
+  const mode = paypalMode();
+  if (mode === 'off') return Response.json({ mode, transactions: [], error: 'PayPal is not connected.' }, { status: 503 });
   try {
-    return Response.json({ mode: 'sandbox', transactions: await recentTransactions() });
+    return Response.json({ mode, transactions: await recentTransactions() });
   } catch (error) {
-    return Response.json({ mode: 'sandbox', transactions: [], error: error instanceof Error ? error.message : String(error) }, { status: 502 });
+    return Response.json({ mode, transactions: [], error: error instanceof Error ? error.message : String(error) }, { status: 502 });
   }
 }
 

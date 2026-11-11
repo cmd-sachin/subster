@@ -7,8 +7,8 @@ import { describeLlmError, generate, llmAvailable, llmModel } from '@/server/llm
 // Gemini attaches a signature to each function call that it expects back when the conversation
 // continues. Studio's conversation format has nowhere to carry it, so it is remembered here by
 // call id for the life of the process.
-const memory = globalThis as unknown as { __subsenseSignatures?: Map<string, string> };
-const signatures = (memory.__subsenseSignatures ??= new Map<string, string>());
+const memory = globalThis as unknown as { __substerSignatures?: Map<string, string> };
+const signatures = (memory.__substerSignatures ??= new Map<string, string>());
 
 /** Studio's provider-neutral conversation -> Gemini contents (alternating roles, results grouped). */
 function toContents(items: AgAiConversationItem[]): Content[] {

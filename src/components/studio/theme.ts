@@ -15,7 +15,7 @@ const palette = Object.fromEntries(
   ]),
 );
 
-export const subsenseStudioTheme = studioTheme.withParams({
+export const substerStudioTheme = studioTheme.withParams({
   fontFamily: FONT,
   fontSize: 14,
   textColor: '#f3f5f7',

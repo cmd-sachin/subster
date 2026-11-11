@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "SubSenseCompanion"
+rootProject.name = "SubsterCompanion"
 include(":app")

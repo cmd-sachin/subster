@@ -135,7 +135,7 @@ export default function Timeline() {
         </ul>
       </header>
 
-      <div className="subsense-timeline min-h-0 flex-1 border-t border-white/[0.06]">
+      <div className="subster-timeline min-h-0 flex-1 border-t border-white/[0.06]">
         <BryntumScheduler
           startDate={model.start}
           endDate={model.end}

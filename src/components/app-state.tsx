@@ -42,15 +42,6 @@ export function useApp() {
   return { state: query.data ?? null, error: query.error ? query.error.message : null, refresh, mutate };
 }
 
-/** Listeners for live log entries (the Logs page). Kept outside React so one stream serves all. */
-const logListeners = new Set<(event: Extract<LiveEvent, { type: 'log' }>) => void>();
-export function onLiveLog(listener: (event: Extract<LiveEvent, { type: 'log' }>) => void) {
-  logListeners.add(listener);
-  return () => {
-    logListeners.delete(listener);
-  };
-}
-
 /** Mounted once at the root: one event stream for the app. */
 export function LiveUpdates() {
   const client = useQueryClient();
@@ -59,7 +50,6 @@ export function LiveUpdates() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     source.onmessage = (message) => {
       const event = JSON.parse(message.data) as LiveEvent;
-      if (event.type === 'log') logListeners.forEach((listener) => listener(event));
       if (event.type !== 'state') return;
       clearTimeout(timer);
       // Several saves in a burst become one re-fetch.

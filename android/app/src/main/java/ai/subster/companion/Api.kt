@@ -1,4 +1,4 @@
-package ai.subsense.companion
+package ai.subster.companion
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,7 +9,7 @@ import java.net.URL
 
 data class TrackedApp(val packageName: String, val name: String)
 
-/** The two calls the companion makes to the SubSense server. */
+/** The two calls the companion makes to the Subster server. */
 object Api {
 
     private fun open(url: String, method: String): HttpURLConnection =

@@ -1,15 +1,16 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { CalendarRange, ChartColumn, LayoutDashboard, LayoutGrid, Plug, ScrollText } from 'lucide-react';
+import { CalendarRange, ChartColumn, LayoutDashboard, LayoutGrid, PiggyBank, Plug, Receipt } from 'lucide-react';
 import { setCurrency } from '@/domain/dates';
 import { useApp } from './app-state';
 
 const NAV = [
   { href: '/', label: 'Command center', hint: 'Inbox, agent, value', icon: LayoutDashboard },
+  { href: '/savings', label: 'Savings', hint: 'Where you can spend less', icon: PiggyBank },
   { href: '/services', label: 'Services', hint: 'Plans, prices, sign-in', icon: LayoutGrid },
+  { href: '/transactions', label: 'Transactions', hint: 'Payments, refunds, cancelling', icon: Receipt },
   { href: '/timeline', label: 'Renewal timeline', hint: 'Bryntum Scheduler', icon: CalendarRange },
   { href: '/analytics', label: 'Analytics', hint: 'AG Studio', icon: ChartColumn },
   { href: '/connect', label: 'Connections', hint: 'Bank, PayPal, usage', icon: Plug },
-  { href: '/logs', label: 'Logs', hint: 'Live application logs', icon: ScrollText },
 ] as const;
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -35,8 +36,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <path d="M8.5 18c1.7 2.4 3.9 3.6 6.5 3.6 3.2 0 5-1.6 5-3.7 0-4.7-9.6-2.2-9.6-6.7 0-1.9 1.7-3.3 4.5-3.3 2.1 0 3.9.9 5.3 2.6" fill="none" stroke="#d4ff24" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
           <div>
-            <div className="text-[16px] font-semibold leading-tight tracking-tight">SubSense</div>
+            <div className="text-[16px] font-semibold leading-tight tracking-tight">Subster</div>
             <div className="text-[11px] leading-tight text-faint">Subscription agent</div>
+            {state?.demo && (
+              <Link to="/connect" className="mt-1.5 inline-block rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn" title="This is sample data, not your own. Close it on the Connections page.">
+                Demo data
+              </Link>
+            )}
           </div>
         </div>
 

@@ -1,10 +1,10 @@
-package ai.subsense.companion
+package ai.subster.companion
 
 import android.content.Context
 
-/** Small settings store: where the SubSense server is, and how the last sync went. */
+/** Small settings store: where the Subster server is, and how the last sync went. */
 class Prefs(context: Context) {
-    private val prefs = context.getSharedPreferences("subsense", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("subster", Context.MODE_PRIVATE)
 
     var serverUrl: String
         // 10.0.2.2 is the development machine as seen from the Android emulator.

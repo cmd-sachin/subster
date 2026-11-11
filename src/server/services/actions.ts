@@ -33,6 +33,8 @@ export interface ProposalInput {
   reason: string;
   evidence?: string[];
   runId?: string;
+  /** Who asked for it. A request the user makes themselves is not an agent proposal. */
+  by?: 'agent' | 'user';
 }
 
 export type ProposalResult = { ok: true; action: AgentAction; outcome: 'pending_approval' | 'auto_executed' | 'already_pending' } | { ok: false; error: string };
@@ -67,7 +69,7 @@ export async function createProposal(input: ProposalInput): Promise<ProposalResu
     channel: channelFor(sub, input.type),
     createdAt: new Date().toISOString(),
     runId: input.runId,
-    steps: [step('Proposed by the agent', true, input.reason)],
+    steps: [step(input.by === 'user' ? 'Requested by you' : 'Proposed by the agent', true, input.reason)],
   };
   data.actions.unshift(action);
   save('proposal created');
@@ -91,7 +93,7 @@ export function proposeSubscription(input: { providerId: string; planName?: stri
   // when it has been read, otherwise the catalog's list prices.
   const liveUsd = (data.livePlans[provider.id]?.plans ?? []).filter((p) => p.currency === 'USD').map(({ name, price, cycle }) => ({ name, price, cycle }));
   const plans = liveUsd.length > 0 ? liveUsd : provider.plans.filter((p) => p.currency === 'USD').map(({ name, price, cycle }) => ({ name, price, cycle }));
-  if (plans.length === 0) return { ok: false, error: `${provider.name} has no plan list in the catalog, so it cannot be started from here. The user can subscribe on its site (${provider.manageUrl}) and SubSense will pick up the payment.` };
+  if (plans.length === 0) return { ok: false, error: `${provider.name} has no plan list in the catalog, so it cannot be started from here. The user can subscribe on its site (${provider.manageUrl}) and Subster will pick up the payment.` };
   const plan = (input.planName && plans.find((p) => p.name.toLowerCase() === input.planName!.toLowerCase())) || (input.planName ? undefined : plans[0]);
   if (!plan) return { ok: false, error: `${provider.name} has no plan called "${input.planName}". Plans: ${plans.map((p) => p.name).join(', ')}.` };
   if (data.subscriptions.some((s) => s.providerId === provider.id && s.status !== 'cancelled')) return { ok: false, error: `The user already has an active ${provider.name} subscription.` };
@@ -150,7 +152,7 @@ export async function execute(actionId: string, approvedBy: 'user' | 'policy', o
   const expected = op === 'cancel' ? 'CANCELLED' : op === 'suspend' ? 'SUSPENDED' : 'ACTIVE';
   try {
     action.steps.push(step(`Calling PayPal (${paypalMode()}): ${op} ${sub.paypalSubscriptionId}`, true));
-    const { before, after } = await changeSubscription(sub.paypalSubscriptionId!, op, `SubSense: ${action.reason}`.slice(0, 127));
+    const { before, after } = await changeSubscription(sub.paypalSubscriptionId!, op, `Subster: ${action.reason}`.slice(0, 127));
     const verified = after === expected;
     action.steps.push(step(`Verified with PayPal: ${before} to ${after}`, verified, verified ? undefined : `Expected ${expected}`));
     if (!verified) throw new Error(`Subscription is ${after}, expected ${expected}`);

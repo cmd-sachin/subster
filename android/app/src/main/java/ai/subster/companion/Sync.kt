@@ -1,4 +1,4 @@
-package ai.subsense.companion
+package ai.subster.companion
 
 import android.content.Context
 import androidx.work.Constraints
@@ -41,7 +41,7 @@ object Sync {
         val request = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork("subsense-usage-sync", ExistingPeriodicWorkPolicy.KEEP, request)
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork("subster-usage-sync", ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }
 

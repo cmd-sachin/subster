@@ -35,28 +35,53 @@ function fileAdapter(file: string): StoreAdapter {
 const adapter = fileAdapter(path.join(process.cwd(), '.data', 'db.json'));
 
 // Survives hot reloads in dev, where modules are re-evaluated.
-const cache = globalThis as unknown as { __subsenseDb?: Db };
+const cache = globalThis as unknown as { __substerDb?: Db };
 
 export function db(): Db {
-  if (cache.__subsenseDb) return cache.__subsenseDb;
+  if (cache.__substerDb) return cache.__substerDb;
   const stored = adapter.load();
   // A document from an older schema is replaced rather than migrated.
-  cache.__subsenseDb = stored && stored.version === SCHEMA_VERSION ? stored : emptyDb();
-  if (cache.__subsenseDb !== stored) adapter.persist(cache.__subsenseDb);
-  return cache.__subsenseDb;
+  cache.__substerDb = stored && stored.version === SCHEMA_VERSION ? stored : emptyDb();
+  if (cache.__substerDb !== stored) adapter.persist(cache.__substerDb);
+  return cache.__substerDb;
 }
 
 /** Persists the current document and tells open dashboards that something changed. */
 export function save(reason = 'update') {
-  if (!cache.__subsenseDb) return;
-  adapter.persist(cache.__subsenseDb);
+  if (!cache.__substerDb) return;
+  adapter.persist(cache.__substerDb);
   publish(reason);
 }
 
 export function reset(): Db {
-  cache.__subsenseDb = emptyDb();
+  // Erasing during a demo empties the demo; the user's own data stays set aside until the demo is closed.
+  const demo = cache.__substerDb?.demo === true;
+  cache.__substerDb = { ...emptyDb(), ...(demo && { demo }) };
   save('reset');
-  return cache.__subsenseDb;
+  return cache.__substerDb;
+}
+
+// Demo data never mixes with the user's own: their document is set aside in a second file while
+// the demo is open and put back, untouched, when it is closed.
+const realAdapter = fileAdapter(path.join(process.cwd(), '.data', 'db.real.json'));
+
+/** Swaps in a fresh demo document, filled by `fill`. The user's own document is set aside first. */
+export function openDemo(fill: (data: Db) => void): Db {
+  if (!db().demo) realAdapter.persist(db());
+  cache.__substerDb = { ...emptyDb(), demo: true };
+  fill(cache.__substerDb);
+  save('demo opened');
+  return cache.__substerDb;
+}
+
+/** Puts the user's own document back. Does nothing when no demo is open. */
+export function closeDemo(): Db {
+  if (!db().demo) return db();
+  const real = realAdapter.load();
+  cache.__substerDb = real && real.version === SCHEMA_VERSION && !real.demo ? real : emptyDb();
+  save('demo closed');
+  fs.rmSync(path.join(process.cwd(), '.data', 'db.real.json'), { force: true });
+  return cache.__substerDb;
 }
 
 export const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

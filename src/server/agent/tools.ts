@@ -1,7 +1,8 @@
 // The agent's tools. Both engines (Gemini and the built-in rules engine) act only through these,
 // so the run trace in the UI is the complete record of what the agent looked at and did.
 
-import { CATALOG, CATEGORY_LABEL } from '@/domain/catalog';
+import { CATALOG, catalogPlans, CATEGORY_LABEL } from '@/domain/catalog';
+import { livePlansForRegion } from '@/server/services/plans';
 import { createProposal, proposeSubscription } from '@/server/services/actions';
 import { log } from '@/server/logger';
 import { addDays, currentCurrency, diffDays, money, today } from '@/domain/dates';
@@ -256,14 +257,15 @@ export async function runTool(name: string, input: Record<string, unknown>, runI
         result: {
           apps: apps.map((app) => {
             const mine = data.subscriptions.find((s) => s.providerId === app.id && s.status !== 'cancelled');
-            const live = data.livePlans[app.id];
+            const live = livePlansForRegion()[app.id];
             const official = live?.status === 'ok' && live.plans.length > 0;
+            const listed = catalogPlans(app, currentCurrency());
             return {
               id: app.id,
               name: app.name,
               category: app.category,
-              plans: official ? live.plans : app.plans,
-              plans_source: official ? `official site, checked ${live.checkedAt}` : 'catalog (US list prices, not live)',
+              plans: official ? live.plans : listed,
+              plans_source: official ? `official site, checked ${live.checkedAt}` : listed.some((p) => p.currency === currentCurrency()) ? 'catalog (list prices for the user\'s region, not live)' : 'catalog (US list prices, not live)',
               subscribed: Boolean(mine),
               your_plan: mine?.plan,
               account_page: app.manageUrl,

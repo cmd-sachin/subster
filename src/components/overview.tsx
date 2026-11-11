@@ -93,7 +93,7 @@ export function UsageTrend({ portfolio: p }: { portfolio: Portfolio }) {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-5 py-3.5">
         <div>
           <h2 className="text-[14px] font-semibold">Usage, last 12 weeks</h2>
-          <p className="text-[12px] text-muted">Hours per week on your phone, split by whether the subscription earns its cost.</p>
+          <p className="text-[12px] text-muted">Hours per week on your phone and browser, split by whether the subscription earns its cost.</p>
         </div>
         <ul className="flex gap-4 text-[12px] text-muted">
           <li className="flex items-center gap-1.5">

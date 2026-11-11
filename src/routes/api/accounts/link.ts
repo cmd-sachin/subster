@@ -4,7 +4,7 @@ import { markSelfLinked, syncSpotifyUsage, unlinkAccount } from '@/server/servic
 import { buildState } from '@/server/services/state';
 
 // For providers without an API: the user signs in on the provider's own site, then confirms here.
-// `sync` refreshes usage from an OAuth-linked account. No provider password is ever sent to SubSense.
+// `sync` refreshes usage from an OAuth-linked account. No provider password is ever sent to Subster.
 async function POST({ request }: RouteContext) {
   const { providerId, action } = await body<{ providerId: string; action: 'confirm' | 'unlink' | 'sync' }>(request);
   if (!providerId) return fail(400, 'providerId is required');

@@ -1,4 +1,4 @@
-package ai.subsense.companion
+package ai.subster.companion
 
 import android.content.Intent
 import android.os.Bundle
@@ -125,7 +125,7 @@ private fun CompanionScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column {
-                Text("SubSense", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                Text("Subster", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
                 Text("Usage companion", color = Faint, fontSize = 13.sp)
             }
 
@@ -141,7 +141,7 @@ private fun CompanionScreen() {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "SubSense reads how long each subscription app was on screen per day. It reads only apps that belong to " +
+                    "Subster reads how long each subscription app was on screen per day. It reads only apps that belong to " +
                         "subscriptions you track and sends daily totals: no titles, no content, no passwords.",
                     color = Muted,
                     fontSize = 13.sp,

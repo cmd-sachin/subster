@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Subster usage",
+  "version": "0.1.0",
+  "description": "Reports how long you spend on the sites of subscriptions you track in Subster. Daily totals only.",
+  "minimum_chrome_version": "120",
+  "permissions": ["tabs", "idle", "alarms", "storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Subster usage", "default_popup": "popup.html" }
+}

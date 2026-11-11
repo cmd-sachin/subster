@@ -151,7 +151,7 @@ export function analyze(data: Db): Portfolio {
       issues.push({ type: 'duplicate', severity: 'warn', message: `Overlaps with ${rival.sub.name}, which you use ${rival.hours30}h/month.` });
     }
 
-    const tvCaveat = sub.category === 'Streaming' && sub.coverage === 'phone';
+    const tvCaveat = sub.category === 'Streaming' && sub.coverage !== 'phone+tv';
     const confidence: Recommendation['confidence'] = tvCaveat ? 'medium' : 'high';
     let recommendation: Recommendation = { action: 'keep', reason: 'Used enough to justify its price.', savingsMonthly: 0, confidence: 'high' };
 

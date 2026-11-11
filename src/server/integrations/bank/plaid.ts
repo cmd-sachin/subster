@@ -46,8 +46,8 @@ export const plaidConnector: BankConnector = {
 
   async createLinkToken(origin) {
     const { link_token } = await plaid<{ link_token: string }>('/link/token/create', {
-      user: { client_user_id: 'subsense-demo-user' },
-      client_name: 'SubSense',
+      user: { client_user_id: 'subster-demo-user' },
+      client_name: 'Subster',
       products: ['transactions'],
       country_codes: ['US'],
       language: 'en',

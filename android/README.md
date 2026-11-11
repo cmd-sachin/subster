@@ -1,4 +1,4 @@
-# SubSense companion (Android)
+# Subster companion (Android)
 
 Reports how long each subscription app was on screen, so the web app can compare cost with use.
 
@@ -14,7 +14,7 @@ Reports how long each subscription app was on screen, so the web app can compare
 3. Run on an emulator. The default server URL `http://10.0.2.2:3000` reaches your machine.
    On a physical phone, either run `adb reverse tcp:3000 tcp:3000` and use
    `http://localhost:3000`, or enter your deployed `https://` URL.
-4. Tap **Open usage access settings**, allow SubSense, return, and tap **Sync now**.
+4. Tap **Open usage access settings**, allow Subster, return, and tap **Sync now**.
 
 Plain HTTP is allowed only for `10.0.2.2` and `localhost`; everything else must be HTTPS.
 

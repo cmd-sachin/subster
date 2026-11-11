@@ -2,7 +2,7 @@
 // three places, and carries the id of the request that caused it:
 //   - the process console, one line per entry, for whoever runs the server;
 //   - .data/logs/app.log as NDJSON, rotated at 5 MB, so logs survive restarts;
-//   - an in-memory ring and the live event stream, which feed the Logs page.
+//   - an in-memory ring and the live event stream, read through /api/logs.
 // Values under keys that look like credentials are redacted before anything is written.
 
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -17,8 +17,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const RING_SIZE = 1500;
 const SECRET_KEY = /token|secret|password|authorization|api[-_]?key|cookie|credential/i;
 
-const memory = globalThis as unknown as { __subsenseLogs?: LogEntry[]; __subsenseLogSeq?: number };
-const ring = (memory.__subsenseLogs ??= []);
+const memory = globalThis as unknown as { __substerLogs?: LogEntry[]; __substerLogSeq?: number };
+const ring = (memory.__substerLogs ??= []);
 
 /** Carries the current request id to every log call made while handling that request. */
 export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
@@ -41,9 +41,9 @@ function persist(entry: LogEntry) {
 }
 
 function write(level: LogLevel, scope: string, message: string, meta?: Record<string, unknown>) {
-  memory.__subsenseLogSeq = (memory.__subsenseLogSeq ?? 0) + 1;
+  memory.__substerLogSeq = (memory.__substerLogSeq ?? 0) + 1;
   const entry: LogEntry = {
-    id: `${Date.now().toString(36)}-${memory.__subsenseLogSeq}`,
+    id: `${Date.now().toString(36)}-${memory.__substerLogSeq}`,
     at: new Date().toISOString(),
     level,
     scope,

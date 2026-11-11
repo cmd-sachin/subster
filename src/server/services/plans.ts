@@ -12,20 +12,29 @@
 // catalog prices, labelled as not live.
 
 import { ApiError } from '@google/genai';
-import { providerById, type Provider } from '@/domain/catalog';
+import { providerById, REGION, type Provider } from '@/domain/catalog';
 import type { BillingCycle, Currency, LivePlan, LivePlans } from '@/domain/types';
 import { HttpError } from '@/server/http';
 import { describeLlmError, generate, llmAvailable, textOf } from '@/server/llm';
 import { log } from '@/server/logger';
 import { db, save } from '@/server/store';
 
-const REGION: Record<Currency, string> = { INR: 'India', USD: 'the United States', EUR: 'Germany', GBP: 'the United Kingdom' };
 const CURRENCIES: Currency[] = ['USD', 'INR', 'EUR', 'GBP'];
 const CYCLES: BillingCycle[] = ['monthly', 'quarterly', 'yearly'];
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 const MONITOR_EVERY_MS = 6 * 60 * 60 * 1000;
 
 export const planMonitorAvailable = () => llmAvailable();
+
+/**
+ * Live plans read for the user's current region. Plans read for another region stay stored but
+ * are not shown or compared against: after a currency change they describe the wrong country.
+ */
+export function livePlansForRegion(): Record<string, LivePlans> {
+  const data = db();
+  const region = REGION[data.settings.currency];
+  return Object.fromEntries(Object.entries(data.livePlans).filter(([, live]) => live.region === region));
+}
 
 /** The provider's registrable domain: where plan data has to come from. */
 export function officialDomain(provider: Provider) {
@@ -91,7 +100,8 @@ export async function refreshPlans(providerId: string): Promise<LivePlans> {
   const region = REGION[currency];
   const domains = officialDomains(provider);
   const domain = domains.join(' or ');
-  const previous = data.livePlans[providerId];
+  // A result for another region is not a baseline: it is replaced, not diffed or kept on failure.
+  const previous = data.livePlans[providerId]?.region === region ? data.livePlans[providerId] : undefined;
   const started = performance.now();
 
   const prompt = `Find the subscription plans that ${provider.name} currently sells to individual consumers in ${region}, using only its official website (${domain}). Search those sites and read the official pricing or plans page.
@@ -175,8 +185,9 @@ function diffPlans(before: LivePlan[], after: LivePlan[]): string[] {
 async function monitorOnce() {
   if (!planMonitorAvailable()) return;
   const data = db();
+  const current = livePlansForRegion();
   const due = [...new Set(data.subscriptions.filter((s) => s.providerId && s.status !== 'cancelled').map((s) => s.providerId!))]
-    .filter((id) => Date.now() - Date.parse(data.livePlans[id]?.lastAttemptAt ?? data.livePlans[id]?.checkedAt ?? '1970-01-01') > STALE_AFTER_MS)
+    .filter((id) => Date.now() - Date.parse(current[id]?.lastAttemptAt ?? current[id]?.checkedAt ?? '1970-01-01') > STALE_AFTER_MS)
     .slice(0, 8);
   if (due.length === 0) return;
   log.info('plans', `Monitor: checking ${due.length} subscribed service${due.length === 1 ? '' : 's'}`, { services: due });
@@ -184,12 +195,12 @@ async function monitorOnce() {
   for (const id of due) await refreshPlans(id).catch(() => {});
 }
 
-const timers = globalThis as unknown as { __subsensePlanMonitor?: ReturnType<typeof setInterval> };
+const timers = globalThis as unknown as { __substerPlanMonitor?: ReturnType<typeof setInterval> };
 
 /** Starts the background monitor once per process. */
 export function startPlanMonitor() {
-  if (timers.__subsensePlanMonitor) return;
-  timers.__subsensePlanMonitor = setInterval(() => void monitorOnce(), MONITOR_EVERY_MS);
-  timers.__subsensePlanMonitor.unref?.();
+  if (timers.__substerPlanMonitor) return;
+  timers.__substerPlanMonitor = setInterval(() => void monitorOnce(), MONITOR_EVERY_MS);
+  timers.__substerPlanMonitor.unref?.();
   setTimeout(() => void monitorOnce(), 30_000).unref?.();
 }

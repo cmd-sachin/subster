@@ -12,7 +12,7 @@ export type Policy =
   | 'locked'; // agent never proposes changes
 
 /** Which devices feed usage for a subscription. Drives how confident a recommendation may be. */
-export type Coverage = 'phone' | 'phone+tv' | 'none';
+export type Coverage = 'phone' | 'web' | 'phone+web' | 'phone+tv' | 'none';
 
 export interface Subscription {
   id: string;
@@ -42,7 +42,7 @@ export interface Subscription {
   providerId?: string;
   /** How the category was decided. The user's own choice always wins. */
   classifiedBy: Classifier;
-  /** Where SubSense learned about this subscription. */
+  /** Where Subster learned about this subscription. */
   source: 'bank' | 'statement' | 'paypal' | 'manual' | 'chat';
 }
 
@@ -62,7 +62,34 @@ export interface UsageDay {
   subId: string;
   date: string; // ISO date
   minutes: number;
-  source: 'android' | 'account' | 'manual';
+  /** android: the companion app. web: the browser extension. account: the provider's own API. */
+  source: 'android' | 'web' | 'account' | 'manual';
+}
+
+export type RefundReason = 'charged_after_cancel' | 'unused_renewal' | 'trial_converted' | 'duplicate_charge' | 'price_changed' | 'other';
+
+/**
+ * A refund the user is asking a provider for. Subster cannot issue refunds: only the company
+ * that took the payment can. It prepares the request, says where to send it and keeps track.
+ */
+export interface RefundRequest {
+  id: string;
+  chargeId: string;
+  subId: string;
+  amount: number;
+  reason: RefundReason;
+  note?: string;
+  /** drafted: written, not sent. sent: the user says they sent it. refunded / declined: the provider's answer. */
+  status: 'drafted' | 'sent' | 'refunded' | 'declined';
+  /** The request text, ready to paste into the provider's support form. */
+  message: string;
+  /** Facts from the user's own records that support the request. */
+  evidence: string[];
+  /** Where the request goes: the provider's account page, or PayPal's Resolution Centre for PayPal payments. */
+  contactUrl: string;
+  via: 'provider' | 'paypal';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type ActionType = 'cancel' | 'pause' | 'resume' | 'downgrade' | 'retry_payment' | 'subscribe';
@@ -134,6 +161,8 @@ export interface AgentRun {
 
 export interface Db {
   version: number;
+  /** True while the store holds the built-in demo data instead of the user's own. */
+  demo?: boolean;
   seededAt: string;
   subscriptions: Subscription[];
   charges: Charge[];
@@ -141,6 +170,8 @@ export interface Db {
   actions: AgentAction[];
   notes: TimelineNote[];
   runs: AgentRun[];
+  /** Refund requests. Optional so documents written before it existed still load. */
+  refunds?: RefundRequest[];
   webhookLog: { at: string; source: 'paypal' | 'bank'; type: string; resource: string; handled: string }[];
   bank: BankLink | null;
   bankTransactions: BankTransaction[];
@@ -217,6 +248,8 @@ export interface Portfolio {
 }
 
 export interface AppState {
+  /** The data on screen is the built-in demo set, not the user's own. */
+  demo: boolean;
   portfolio: Portfolio;
   settings: Settings;
   accounts: Omit<AccountConnection, 'tokens'>[];
@@ -225,6 +258,9 @@ export interface AppState {
   runs: AgentRun[];
   notes: TimelineNote[];
   charges: Charge[];
+  refunds: RefundRequest[];
+  /** Imported bank payments, newest first (the latest 500). */
+  bankTransactions: BankTransaction[];
   usage: UsageDay[];
   integrations: {
     paypal: 'sandbox' | 'live' | 'off';

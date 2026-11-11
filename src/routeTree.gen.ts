@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as ConnectRouteImport } from './routes/connect'
-import { Route as LogsRouteImport } from './routes/logs'
+import { Route as SavingsRouteImport } from './routes/savings'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
+import { Route as ApiDemoRouteImport } from './routes/api/demo'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as ApiImportRouteImport } from './routes/api/import'
 import { Route as ApiLogsRouteImport } from './routes/api/logs'
@@ -25,6 +27,7 @@ import { Route as ApiServicesRouteImport } from './routes/api/services'
 import { Route as ApiSettingsRouteImport } from './routes/api/settings'
 import { Route as ApiStateRouteImport } from './routes/api/state'
 import { Route as ApiStudioAiRouteImport } from './routes/api/studio-ai'
+import { Route as ApiTransactionsRouteImport } from './routes/api/transactions'
 import { Route as ApiUsageRouteImport } from './routes/api/usage'
 import { Route as ApiAccountsLinkRouteImport } from './routes/api/accounts/link'
 import { Route as ApiActionsIdRouteImport } from './routes/api/actions/$id'
@@ -59,9 +62,9 @@ const ConnectRoute = ConnectRouteImport.update({
   path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LogsRoute = LogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
+const SavingsRoute = SavingsRouteImport.update({
+  id: '/savings',
+  path: '/savings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesRoute = ServicesRouteImport.update({
@@ -74,9 +77,19 @@ const TimelineRoute = TimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransactionsRoute = TransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentRoute = ApiAgentRouteImport.update({
   id: '/api/agent',
   path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDemoRoute = ApiDemoRouteImport.update({
+  id: '/api/demo',
+  path: '/api/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiEventsRoute = ApiEventsRouteImport.update({
@@ -122,6 +135,11 @@ const ApiStateRoute = ApiStateRouteImport.update({
 const ApiStudioAiRoute = ApiStudioAiRouteImport.update({
   id: '/api/studio-ai',
   path: '/api/studio-ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTransactionsRoute = ApiTransactionsRouteImport.update({
+  id: '/api/transactions',
+  path: '/api/transactions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUsageRoute = ApiUsageRouteImport.update({
@@ -221,10 +239,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/connect': typeof ConnectRoute
-  '/logs': typeof LogsRoute
+  '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
   '/timeline': typeof TimelineRoute
+  '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
@@ -234,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/api/settings': typeof ApiSettingsRoute
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
+  '/api/transactions': typeof ApiTransactionsRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
@@ -257,10 +278,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/connect': typeof ConnectRoute
-  '/logs': typeof LogsRoute
+  '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
   '/timeline': typeof TimelineRoute
+  '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
@@ -270,6 +293,7 @@ export interface FileRoutesByTo {
   '/api/settings': typeof ApiSettingsRoute
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
+  '/api/transactions': typeof ApiTransactionsRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
@@ -294,10 +318,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/connect': typeof ConnectRoute
-  '/logs': typeof LogsRoute
+  '/savings': typeof SavingsRoute
   '/services': typeof ServicesRoute
   '/timeline': typeof TimelineRoute
+  '/transactions': typeof TransactionsRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/demo': typeof ApiDemoRoute
   '/api/events': typeof ApiEventsRoute
   '/api/import': typeof ApiImportRoute
   '/api/logs': typeof ApiLogsRoute
@@ -307,6 +333,7 @@ export interface FileRoutesById {
   '/api/settings': typeof ApiSettingsRoute
   '/api/state': typeof ApiStateRoute
   '/api/studio-ai': typeof ApiStudioAiRoute
+  '/api/transactions': typeof ApiTransactionsRoute
   '/api/usage': typeof ApiUsageRoute
   '/api/accounts/link': typeof ApiAccountsLinkRoute
   '/api/actions/$id': typeof ApiActionsIdRoute
@@ -332,10 +359,12 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/connect'
-    | '/logs'
+    | '/savings'
     | '/services'
     | '/timeline'
+    | '/transactions'
     | '/api/agent'
+    | '/api/demo'
     | '/api/events'
     | '/api/import'
     | '/api/logs'
@@ -345,6 +374,7 @@ export interface FileRouteTypes {
     | '/api/settings'
     | '/api/state'
     | '/api/studio-ai'
+    | '/api/transactions'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
@@ -368,10 +398,12 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/connect'
-    | '/logs'
+    | '/savings'
     | '/services'
     | '/timeline'
+    | '/transactions'
     | '/api/agent'
+    | '/api/demo'
     | '/api/events'
     | '/api/import'
     | '/api/logs'
@@ -381,6 +413,7 @@ export interface FileRouteTypes {
     | '/api/settings'
     | '/api/state'
     | '/api/studio-ai'
+    | '/api/transactions'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
@@ -404,10 +437,12 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/connect'
-    | '/logs'
+    | '/savings'
     | '/services'
     | '/timeline'
+    | '/transactions'
     | '/api/agent'
+    | '/api/demo'
     | '/api/events'
     | '/api/import'
     | '/api/logs'
@@ -417,6 +452,7 @@ export interface FileRouteTypes {
     | '/api/settings'
     | '/api/state'
     | '/api/studio-ai'
+    | '/api/transactions'
     | '/api/usage'
     | '/api/accounts/link'
     | '/api/actions/$id'
@@ -441,10 +477,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   ConnectRoute: typeof ConnectRoute
-  LogsRoute: typeof LogsRoute
+  SavingsRoute: typeof SavingsRoute
   ServicesRoute: typeof ServicesRoute
   TimelineRoute: typeof TimelineRoute
+  TransactionsRoute: typeof TransactionsRoute
   ApiAgentRoute: typeof ApiAgentRoute
+  ApiDemoRoute: typeof ApiDemoRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiImportRoute: typeof ApiImportRoute
   ApiLogsRoute: typeof ApiLogsRoute
@@ -454,6 +492,7 @@ export interface RootRouteChildren {
   ApiSettingsRoute: typeof ApiSettingsRoute
   ApiStateRoute: typeof ApiStateRoute
   ApiStudioAiRoute: typeof ApiStudioAiRoute
+  ApiTransactionsRoute: typeof ApiTransactionsRoute
   ApiUsageRoute: typeof ApiUsageRoute
   ApiAccountsLinkRoute: typeof ApiAccountsLinkRoute
   ApiActionsIdRoute: typeof ApiActionsIdRoute
@@ -497,11 +536,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/logs': {
-      id: '/logs'
-      path: '/logs'
-      fullPath: '/logs'
-      preLoaderRoute: typeof LogsRouteImport
+    '/savings': {
+      id: '/savings'
+      path: '/savings'
+      fullPath: '/savings'
+      preLoaderRoute: typeof SavingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services': {
@@ -518,11 +557,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transactions': {
+      id: '/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof TransactionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent': {
       id: '/api/agent'
       path: '/api/agent'
       fullPath: '/api/agent'
       preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/demo': {
+      id: '/api/demo'
+      path: '/api/demo'
+      fullPath: '/api/demo'
+      preLoaderRoute: typeof ApiDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/events': {
@@ -586,6 +639,13 @@ declare module '@tanstack/react-router' {
       path: '/api/studio-ai'
       fullPath: '/api/studio-ai'
       preLoaderRoute: typeof ApiStudioAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/transactions': {
+      id: '/api/transactions'
+      path: '/api/transactions'
+      fullPath: '/api/transactions'
+      preLoaderRoute: typeof ApiTransactionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/usage': {
@@ -721,10 +781,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   ConnectRoute: ConnectRoute,
-  LogsRoute: LogsRoute,
+  SavingsRoute: SavingsRoute,
   ServicesRoute: ServicesRoute,
   TimelineRoute: TimelineRoute,
+  TransactionsRoute: TransactionsRoute,
   ApiAgentRoute: ApiAgentRoute,
+  ApiDemoRoute: ApiDemoRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiImportRoute: ApiImportRoute,
   ApiLogsRoute: ApiLogsRoute,
@@ -734,6 +796,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsRoute: ApiSettingsRoute,
   ApiStateRoute: ApiStateRoute,
   ApiStudioAiRoute: ApiStudioAiRoute,
+  ApiTransactionsRoute: ApiTransactionsRoute,
   ApiUsageRoute: ApiUsageRoute,
   ApiAccountsLinkRoute: ApiAccountsLinkRoute,
   ApiActionsIdRoute: ApiActionsIdRoute,

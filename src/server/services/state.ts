@@ -6,7 +6,7 @@ import { availableBanks, plaidIsSandbox } from '@/server/integrations/bank';
 import { paypalMode } from '@/server/integrations/paypal';
 import { db } from '@/server/store';
 import { spotifyConfigured } from './accounts';
-import { planMonitorAvailable, startPlanMonitor } from './plans';
+import { livePlansForRegion, planMonitorAvailable, startPlanMonitor } from './plans';
 
 /** Everything the UI needs in one payload. Credentials, tokens and cursors never leave the server. */
 export function buildState(): AppState {
@@ -21,14 +21,17 @@ export function buildState(): AppState {
     link = { provider, institution, accountMask, linkedAt, lastSyncAt };
   }
   return {
+    demo: data.demo === true,
     portfolio: analyze(data),
     settings: data.settings,
     accounts: data.accounts.map(({ providerId, method, displayName, product, connectedAt, lastSyncAt }) => ({ providerId, method, displayName, product, connectedAt, lastSyncAt })),
-    livePlans: data.livePlans,
+    livePlans: livePlansForRegion(),
     actions: data.actions,
     runs: data.runs,
     notes: data.notes,
     charges: data.charges,
+    refunds: data.refunds ?? [],
+    bankTransactions: [...data.bankTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 500),
     usage: data.usage,
     integrations: {
       paypal: paypalMode(),

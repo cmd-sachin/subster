@@ -1,5 +1,5 @@
-// Linking the user's own account at a provider. SubSense never asks for a provider password.
-// Where the provider has OAuth (Spotify), the user signs in on the provider's site and SubSense
+// Linking the user's own account at a provider. Subster never asks for a provider password.
+// Where the provider has OAuth (Spotify), the user signs in on the provider's site and Subster
 // receives a scoped token: enough to confirm the plan and read recent listening as real usage.
 // Where there is no API, the user signs in on the provider's own account page and tells us so.
 
@@ -123,7 +123,8 @@ export async function syncSpotifyUsage() {
       if (existing) existing.minutes = Math.max(existing.minutes, Math.round(minutes));
       else data.usage.push({ subId: sub.id, date, minutes: Math.round(minutes), source: 'account' });
     }
-    if (sub.coverage === 'none') sub.coverage = 'phone';
+    // Listening history covers every device the account plays on.
+    if (sub.coverage === 'none') sub.coverage = 'phone+web';
   }
   connection.lastSyncAt = new Date().toISOString();
   save('spotify synced');
