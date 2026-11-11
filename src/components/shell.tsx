@@ -134,7 +134,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center justify-end gap-2 px-5 pb-1 pt-4 md:px-8">
+        <header className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-4 pb-1 pt-3 md:px-8 md:pt-4">
+          {me && !me.persistent && (
+            <span className="rounded-full bg-bad-soft px-3 py-1.5 text-[12px] font-medium text-bad" title="This deployment has no storage connected, so sign-ins and data are lost between requests. Connect the database and redeploy.">
+              Storage not connected
+            </span>
+          )}
           {state?.demo && (
             <button onClick={openTour} className="rounded-full bg-sun-soft px-3 py-1.5 text-[12px] font-medium" title="This is sample data, not your own. Open the walkthrough to end the demo.">
               Demo mode

@@ -20,6 +20,8 @@ interface Tour {
   small: boolean;
 }
 const START: Tour = { step: 0, small: false };
+/** A fresh tour. On a phone it starts tucked away, since the open card covers half the screen. */
+const fresh = (): Tour => ({ step: 0, small: typeof window !== 'undefined' && window.innerWidth < 640 });
 let tour: Tour = START;
 let read = false;
 const listeners = new Set<() => void>();
@@ -27,7 +29,7 @@ const get = () => {
   if (!read && typeof window !== 'undefined') {
     read = true;
     try {
-      tour = { ...START, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Tour>) };
+      tour = { ...fresh(), ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Tour>) };
     } catch {
       /* start from the beginning */
     }
@@ -47,7 +49,7 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => void listeners.delete(l);
 };
-export const restartTour = () => set(START);
+export const restartTour = () => set(fresh());
 export const openTour = () => set({ small: false });
 
 // ---- The steps ---------------------------------------------------------------------------------

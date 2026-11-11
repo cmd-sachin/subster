@@ -346,11 +346,19 @@ const CURRENCIES: [Currency, string][] = [
 function Onboarding({ user }: { user: SessionUser }) {
   const client = useQueryClient();
   const [step, setStep] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function finish(demo: boolean) {
     setBusy(true);
-    await post('/api/auth/onboard', { demo });
+    setProblem(null);
+    const res = await post('/api/auth/onboard', { demo }).catch(() => null);
+    if (!res?.ok) {
+      setBusy(false);
+      // 401 here means the server no longer knows this session, which is what a deployment
+      // without shared storage looks like from the browser.
+      return setProblem(res?.status === 401 ? 'This server lost track of your sign-in. If it keeps happening, its storage is not connected yet.' : 'That did not save. Please try again.');
+    }
     restartTour();
     await enter(client);
     if (demo) notify({ tone: 'info', title: 'Demo mode is on', body: 'This is sample data. Follow the walkthrough to see PayPal at work.' });
@@ -426,7 +434,13 @@ function Onboarding({ user }: { user: SessionUser }) {
             </>
           )}
 
-          <div className="mt-7 flex items-center gap-3">
+          {problem && (
+            <p role="alert" className="mt-5 rounded-2xl bg-bad-soft px-4 py-2.5 text-[13px] text-bad">
+              {problem}
+            </p>
+          )}
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             {step > 0 && (
               <button type="button" onClick={() => setStep(step - 1)} disabled={busy} className="rounded-full border border-white/10 px-5 py-2.5 text-[14px] hover:border-white/25">
                 Back

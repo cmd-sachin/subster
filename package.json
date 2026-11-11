@@ -1,6 +1,6 @@
 {
   "name": "subster",
-  "version": "0.1.2-beta",
+  "version": "0.1.3-beta",
   "description": "A subscription agent: finds what you pay for, measures what you use, and acts through PayPal with your approval.",
   "private": true,
   "engines": {

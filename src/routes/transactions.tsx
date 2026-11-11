@@ -138,7 +138,7 @@ function Transactions() {
 
       <section className="panel">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2.5">
-          <div className="flex gap-1" role="tablist" aria-label="Transaction views">
+          <div className="flex max-w-full gap-1 overflow-x-auto" role="tablist" aria-label="Transaction views">
             {tabs.map(([id, label, count]) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${tab === id ? 'bg-white/[0.08] text-ink' : 'text-muted hover:text-ink'}`}>
                 {label}

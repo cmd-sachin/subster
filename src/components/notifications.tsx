@@ -179,7 +179,7 @@ export function Toasts() {
   const { alerts } = useAlerts();
   const showing = alerts.filter((a) => a.showing).slice(0, 4);
   return (
-    <div className="pointer-events-none fixed right-4 top-[68px] z-[70] flex w-[min(360px,calc(100vw-32px))] flex-col gap-2.5" role="status" aria-live="polite">
+    <div className="pointer-events-none fixed right-4 top-[68px] z-[70] flex w-[min(360px,calc(100vw-32px))] flex-col gap-2.5 max-md:top-[120px] max-md:[&>*:nth-child(n+2)]:hidden" role="status" aria-live="polite">
       {showing.map((alert) => {
         const { icon: Icon, chip } = LOOK[alert.tone];
         const inner = (

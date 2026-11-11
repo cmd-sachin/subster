@@ -131,12 +131,14 @@ export function useChat(sessionId: string | undefined, onSession: (id: string) =
         let id = sessionId;
         if (!id) {
           const created = await fetch('/api/chat/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-          if (!created.ok) throw new Error('unreachable');
+          if (!created.ok) throw new Error(created.status === 401 ? 'signed-out' : 'unreachable');
           id = ((await created.json()) as ChatSession).id;
           showing.current = id;
           onSession(id);
         }
         const res = await fetch(`/api/chat/sessions/${id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, message, replaceLast: Boolean(earlier) }), signal: control.signal });
+        if (res.status === 401) throw new Error('signed-out');
+        if (res.status === 403) throw new Error('not-allowed');
         if (!res.ok || !res.body) throw new Error('unreachable');
 
         const reader = res.body.getReader();
@@ -160,8 +162,13 @@ export function useChat(sessionId: string | undefined, onSession: (id: string) =
             if (event.type === 'error') patch((t) => ({ ...t, error: event.message }));
           }
         }
-      } catch {
+      } catch (error) {
+        const why = error instanceof Error ? error.message : '';
         if (control.signal.aborted) patch((t) => ({ ...t, content: t.content || 'Stopped.', seen: true }));
+        else if (why === 'signed-out') {
+          patch((t) => ({ ...t, error: 'You have been signed out. Sign in again to carry on.' }));
+          void client.invalidateQueries({ queryKey: ['me'] });
+        } else if (why === 'not-allowed') patch((t) => ({ ...t, error: 'The assistant is switched off for your account.' }));
         else patch((t) => ({ ...t, error: 'I could not reach the agent just now.' }));
       } finally {
         patch((t) => ({ ...t, done: true }));

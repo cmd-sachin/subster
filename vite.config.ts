@@ -12,7 +12,8 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart(),
     // On Vercel nothing stays running, so the daily background work is a scheduled call.
-    nitro({ vercel: { config: { version: 3, crons: [{ path: '/api/cron', schedule: '30 2 * * *' }] } } }),
+    // The assistant streams its reply while it works, so functions are allowed a minute.
+    nitro({ vercel: { functions: { maxDuration: 60 }, config: { version: 3, crons: [{ path: '/api/cron', schedule: '30 2 * * *' }] } } }),
     viteReact(),
   ],
 });
