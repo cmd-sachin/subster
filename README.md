@@ -154,12 +154,16 @@ environment. Any host that runs a container with a volume works (Render, Railway
 Set `PUBLIC_URL` to the public https address so PayPal can return to it.
 
 **Vercel, or any serverless host.** Nothing stays running there and no disk lasts, so the app
-keeps its documents in a Redis database that every copy shares, and switches to it by itself when
-it finds the connection settings.
+keeps its documents in a database that every copy shares (MongoDB or Redis), and switches to it by
+itself when it finds the connection settings.
 
 1. Import the repository in Vercel and deploy.
-2. In the project's Storage tab, add an Upstash Redis database (there is a free plan) and connect
-   it. Vercel adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+2. Give it a database, one of:
+   - **MongoDB.** Set `MONGODB_URI` to the connection address of a deployed database (MongoDB
+     Atlas has a free plan; allow network access from anywhere, as Vercel has no fixed address).
+     Documents go in a `documents` collection, in the database named in the address or `subster`.
+   - **Redis.** In the project's Storage tab, add an Upstash Redis database and connect it. Vercel
+     adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
 3. Add the keys from `.env.example`, `PUBLIC_URL` set to the site's address, and `CRON_SECRET`
    set to a long random string. Redeploy.
 

@@ -182,7 +182,10 @@ async function startSubscription(action: AgentAction, origin: string): Promise<A
   try {
     if (!provider || !plan) throw new Error('The app or plan for this proposal is no longer in the catalog.');
     action.steps.push(step(`Asking PayPal to create a ${plan.cycle} plan and agreement`, true));
-    const base = process.env.PUBLIC_URL?.replace(/\/$/, '') || origin;
+    // The buyer comes back in the same browser that asked for this, so on a local server the
+    // address they are already on always works; PUBLIC_URL may name a tunnel that has since closed.
+    const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin);
+    const base = local ? origin.replace(/\/$/, '') : process.env.PUBLIC_URL?.replace(/\/$/, '') || origin;
     const agreement = await createAgreement({
       name: `${provider.name} ${plan.name}`,
       price: plan.price,

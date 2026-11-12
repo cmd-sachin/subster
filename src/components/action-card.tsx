@@ -81,6 +81,11 @@ export function ActionCard({ action: a, compact, onApproved }: Props) {
     body = (
       <>
         <p className="mt-1.5 text-[13px] leading-relaxed">Confirm it at PayPal to start. Nothing is charged before that.</p>
+        {state?.integrations.paypal === 'sandbox' && (
+          <p className="mt-2 rounded-xl bg-warn-soft px-3 py-2 text-[12px] leading-relaxed text-warn">
+            PayPal is in test mode here, so its page only accepts a sandbox buyer account (developer.paypal.com, Testing Tools, Sandbox Accounts). A real PayPal login is turned away with &quot;Some of your info isn&apos;t correct&quot;.
+          </p>
+        )}
         <div className="mt-2.5 flex flex-wrap gap-2">
           <a href={a.approveUrl} className={PRIMARY}>
             Continue to PayPal <ExternalLink size={13} className="ml-1 inline" aria-hidden="true" />

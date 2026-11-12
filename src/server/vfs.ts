@@ -1,7 +1,9 @@
 // Where the app's documents are kept. On a server with a disk they are files in the data folder.
 // On a serverless host, where no disk lasts and every copy of the app has its own memory, they are
-// kept in a Redis database that all copies share (Upstash, over its REST interface, so no driver
-// is needed). The rest of the server reads and writes by name and does not know which it is.
+// kept in a database that all copies share: MongoDB when MONGODB_URI is set, otherwise Redis
+// (Upstash, over its REST interface). The rest of the server reads and writes by name and does not
+// know which it is. Setting MONGODB_URI on a server with a disk works too, and makes it share its
+// data with every other copy pointed at the same database.
 //
 // The database is slow to reach compared with a file, so it is not touched mid-request: the
 // documents a request needs are fetched before its handler runs, the handler works on them in
@@ -9,13 +11,20 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import type { Collection, MongoClient } from 'mongodb';
+import './env';
 import { DATA_DIR } from './data-dir';
 
 const URL_ = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
 
 /** True when documents live in the shared database, not on this machine's disk. */
-export const remote = Boolean(URL_ && TOKEN);
+// The address may carry the placeholder Atlas shows, "<db_password>", with the password itself kept
+// apart in DB_PASSWORD; it is filled in here, encoded so symbols in it cannot break the address.
+// Until that password is given the address is unusable, so it is ignored and files are used.
+const waitingForPassword = Boolean(process.env.MONGODB_URI?.includes('<db_password>')) && !process.env.DB_PASSWORD;
+const MONGO = waitingForPassword ? undefined : process.env.MONGODB_URI?.replace('<db_password>', encodeURIComponent(process.env.DB_PASSWORD ?? ''));
+export const remote = Boolean(MONGO || (URL_ && TOKEN));
 const PREFIX = 'subster:';
 
 interface Held {
@@ -31,6 +40,52 @@ async function redis(commands: (string | number)[][]): Promise<{ result?: unknow
   const res = await fetch(`${URL_}/pipeline`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(commands) });
   if (!res.ok) throw new Error(`The database answered ${res.status}`);
   return (await res.json()) as { result?: unknown; error?: string }[];
+}
+
+// ---- MongoDB: one record per document, keyed by its name ----------------------------------------
+
+interface Doc {
+  _id: string;
+  text: string;
+  updatedAt: Date;
+}
+const mongoCache = globalThis as unknown as { __substerMongo?: Promise<MongoClient> };
+
+async function documents(): Promise<Collection<Doc>> {
+  if (!mongoCache.__substerMongo) {
+    // One small pool per copy of the app, kept between requests while the copy stays warm.
+    mongoCache.__substerMongo = import('mongodb').then(({ MongoClient }) => new MongoClient(MONGO as string, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 }).connect());
+    // A failed connection must not be remembered, or every later request would fail with it.
+    mongoCache.__substerMongo.catch(() => (mongoCache.__substerMongo = undefined));
+  }
+  const client = await mongoCache.__substerMongo;
+  // The database named in the address is used; an address without one gets "subster".
+  const named = /^mongodb(?:\+srv)?:\/\/[^/]+\/([^?]+)/.exec(MONGO as string)?.[1];
+  return client.db(process.env.MONGODB_DB || named || 'subster').collection<Doc>('documents');
+}
+
+/** Current text of each named document, in the order asked; `null` where there is none. */
+async function fetchAll(names: string[]): Promise<(string | null)[]> {
+  if (MONGO) {
+    const found = await (await documents()).find({ _id: { $in: names } }).toArray();
+    const byName = new Map(found.map((doc) => [doc._id, doc.text]));
+    return names.map((name) => byName.get(name) ?? null);
+  }
+  const answers = await redis(names.map((name) => ['GET', PREFIX + name]));
+  return names.map((_, i) => (typeof answers[i]?.result === 'string' ? (answers[i].result as string) : null));
+}
+
+/** Stores each named document, or deletes it where the text is `null`. */
+async function storeAll(entries: [string, string | null][]) {
+  if (MONGO) {
+    const now = new Date();
+    await (await documents()).bulkWrite(
+      entries.map(([name, text]) => (text == null ? { deleteOne: { filter: { _id: name } } } : { replaceOne: { filter: { _id: name }, replacement: { text, updatedAt: now }, upsert: true } })),
+      { ordered: false },
+    );
+    return;
+  }
+  await redis(entries.map(([name, text]) => (text == null ? ['DEL', PREFIX + name] : ['SET', PREFIX + name, text])));
 }
 
 export function read(name: string): string | null {
@@ -73,11 +128,11 @@ export async function hydrate(names: string[]): Promise<string[]> {
   // Something changed here and not yet written back is newer than what the database holds.
   const wanted = [...new Set(names)].filter((name) => !held.dirty.has(name));
   if (wanted.length === 0) return [];
-  const answers = await redis(wanted.map((name) => ['GET', PREFIX + name]));
+  const texts = await fetchAll(wanted);
   // Named back only when the content differs, so parsed copies are dropped only when stale.
   const changed: string[] = [];
   wanted.forEach((name, i) => {
-    const text = typeof answers[i]?.result === 'string' ? (answers[i].result as string) : null;
+    const text = texts[i];
     if (!held.files.has(name) || held.files.get(name) !== text) changed.push(name);
     held.files.set(name, text);
   });
@@ -90,7 +145,7 @@ export async function flush() {
   const names = [...held.dirty];
   held.dirty.clear();
   try {
-    await redis(names.map((name) => (held.files.get(name) == null ? ['DEL', PREFIX + name] : ['SET', PREFIX + name, held.files.get(name) as string])));
+    await storeAll(names.map((name) => [name, held.files.get(name) ?? null]));
   } catch (error) {
     // Keep them marked, so the next request tries again.
     names.forEach((name) => held.dirty.add(name));

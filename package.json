@@ -1,6 +1,6 @@
 {
   "name": "subster",
-  "version": "0.1.3-beta",
+  "version": "0.1.4-beta",
   "description": "A subscription agent: finds what you pay for, measures what you use, and acts through PayPal with your approval.",
   "private": true,
   "engines": {
@@ -37,6 +37,7 @@
     "ag-studio": "^3.1.0",
     "ag-studio-react": "^3.1.0",
     "lucide-react": "^1.71.0",
+    "mongodb": "^7.8.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
