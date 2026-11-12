@@ -25,6 +25,16 @@ const TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TO
 const waitingForPassword = Boolean(process.env.MONGODB_URI?.includes('<db_password>')) && !process.env.DB_PASSWORD;
 const MONGO = waitingForPassword ? undefined : process.env.MONGODB_URI?.replace('<db_password>', encodeURIComponent(process.env.DB_PASSWORD ?? ''));
 export const remote = Boolean(MONGO || (URL_ && TOKEN));
+/** Where documents are kept, for the sign-in screen and for whoever is setting up a deployment. No secrets. */
+export const storage: string = MONGO
+  ? 'mongodb'
+  : URL_ && TOKEN
+    ? 'redis'
+    : waitingForPassword
+      ? 'files (MONGODB_URI is set but DB_PASSWORD is missing)'
+      : process.env.DB_PASSWORD
+        ? 'files (DB_PASSWORD is set but MONGODB_URI is missing)'
+        : 'files';
 const PREFIX = 'subster:';
 
 interface Held {
